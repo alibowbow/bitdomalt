@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>알트코인 다중 시간대 자동 분석기 (Pro++)</title>
+  <title>알트코인 다중 시간대 자동 분석기 (Pro++ v1.1)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
@@ -34,7 +34,7 @@
     .trend-up{color:#34d399;font-weight:600}
     .trend-down{color:#f87171;font-weight:600}
     .trend-side{color:#fbbf24;font-weight:600}
-    .log-container{background:#0b1020;color:#9ca3af;padding:1rem;border-radius:.5rem;margin-top:1rem;max-height:220px;overflow-y:auto;font-size:.85rem}
+    .log-container{background:#0b1020;color:#9ca3af;padding:1rem;border-radius:.5rem;margin-top:1rem;max-height:260px;overflow-y:auto;font-size:.85rem}
     .log-entry{padding-bottom:.25rem;border-bottom:1px dashed #1f2937;margin-bottom:.25rem}
     .log-success{color:#34d399}.log-error{color:#f87171}
     .loader{border:4px solid #f3f3f3;border-top:4px solid #60a5fa;border-radius:50%;width:30px;height:30px;animation:spin 1s linear infinite;margin:1rem auto}
@@ -81,7 +81,7 @@
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
           <button id="menuBtn" class="sidebar-toggle btn">메뉴</button>
-          <h1 class="text-2xl font-bold text-white">알트코인 다중 시간대 자동 분석기 <span class="badge">Pro++</span></h1>
+          <h1 class="text-2xl font-bold text-white">알트코인 다중 시간대 자동 분석기 <span class="badge">Pro++ v1.1</span></h1>
         </div>
         <div class="flex items-center gap-3 small">
           <div>마지막 분석: <b id="lastAnalyzedAt">-</b></div>
@@ -375,7 +375,13 @@
 
     async function fetchJson(url, tag=''){
       addApiLog(`GET ${url}`);
-      const res = await fetch(url);
+      let res;
+      try{
+        res = await fetch(url);
+      }catch(e){
+        addApiLog(`${tag||'API'} 네트워크 오류: ${e.message}`, true);
+        throw e;
+      }
       if(!res.ok){
         const t = await res.text().catch(()=> '');
         addApiLog(`${tag||'API'} Error ${res.status}: ${t.slice(0,120)}`, true);
@@ -449,7 +455,7 @@
         minusDM.push((downMove>upMove && downMove>0)? downMove:0);
         TR.push(trueRange(highs[i], lows[i], closes[i-1]));
       }
-      // 초기 Wilder smoothing
+      // 초기 Wilder smoothing 구간
       let TRn=0, pDMn=0, mDMn=0;
       for(let i=0;i<period;i++){ TRn+=TR[i]; pDMn+=plusDM[i]; mDMn+=minusDM[i];}
       let pDI = 100*(pDMn/TRn);
@@ -586,6 +592,42 @@
       return clamp(num/den, -1, +1);
     }
 
+    // ✅ 누락되었던 함수 복구: 종합 전략 생성
+    function generateOverallTradingStrategy(analysesByInterval){
+      let btcLong=0, btcShort=0, btcSide=0, domLong=0, domShort=0, domSide=0, valid=0;
+      INTERVALS_TO_ANALYZE.forEach(tf=>{
+        const a=analysesByInterval[tf];
+        if(a?.btcTrendData && !a.btcTrendData.error && a?.domTrendData && !a.domTrendData.error){
+          valid++;
+          const bt=a.btcTrendData.trend, dm=a.domTrendData.trend;
+          if(bt.includes("상승")) btcLong++; else if(bt.includes("하락")) btcShort++; else btcSide++;
+          if(dm.includes("상승")) domLong++; else if(dm.includes("하락")) domShort++; else domSide++;
+        }
+      });
+      if(valid<3) return "분석 가능한 시간대 데이터가 부족합니다. 개별 분석 참고.";
+
+      const maj = Math.ceil(valid/2);
+      let dBT="혼조", dDM="혼조";
+      if(btcLong>=maj) dBT="상승"; else if(btcShort>=maj) dBT="하락"; else if(btcSide>=maj) dBT="횡보";
+      if(domLong>=maj) dDM="상승"; else if(domShort>=maj) dDM="하락"; else if(domSide>=maj) dDM="횡보";
+
+      let msg="";
+      if(dBT==="상승"){
+        if(dDM==="하락") msg="전반적 강세장. 비트 상승 + 도미넌스 하락 → 알트 유동성 유입. 선별 매수·보유 전략이 유효. 🟢";
+        else if(dDM==="상승") msg="비트 주도 상승장. 알트는 상대적 약세/추종. 비중 조절 및 선별 접근. 🟡";
+        else msg="비트 상승세 우세. 도미넌스 방향에 따라 알트 변동성 확대. 위험관리 동반 선별 매수. 🟢🟡";
+      } else if(dBT==="하락"){
+        if(dDM==="상승") msg="약세 경보. 비트 하락 + 도미넌스 상승 → 알트 급락 위험. 현금·헤지·방어적 포지션 유리. 🔴";
+        else if(dDM==="하락") msg="투심 위축. 동반 하락은 자금 이탈 신호일 수 있음. 보수적·관망. 🔴";
+        else msg="비트 약세 우세. 도미넌스 따라 하방 압력/제한적 움직임. 전환 신호 확인 전 매매 자제. 🔴🟡";
+      } else {
+        if(dDM==="하락") msg="횡보+도미넌스 하락. 순환매/개별 강세 기대. 단기 트레이딩 유효. 🟢";
+        else if(dDM==="상승") msg="횡보+도미넌스 상승. 알트 자금 유출. 매수 자제 및 리스크 관리. 🟡";
+        else msg="방향성 탐색 구간. 개별 이슈 변동성/관망세. 단기 변동성 활용 or 관망. 🟡";
+      }
+      return msg;
+    }
+
     // ==============================
     // 알트 스캐너 (컴포지트 스코어, +DI/-DI 가점 포함)
     // ==============================
@@ -610,7 +652,7 @@
         if(m.price>m.ema20) s+=4;
         if(m.ema20>m.ema50) s+=6;
         if(m.ema20Slope>0) s+=5;
-        if(m.adx>=25) s+=5;                    // 조정(기존 8→5)
+        if(m.adx>=25) s+=5;                    // ADX 가점
         if(m.struct==='HHHL') s+=7;
         if(m.pdi!=null && m.mdi!=null && m.pdi>m.mdi) s+=3; // +DI 방향 가점
       } else {
@@ -727,27 +769,33 @@
     // 심볼 소스 (전체 종목)
     // ==============================
     async function getAllUsdtPerpSymbols(maxCount=80, includeBTC=false){
-      const [exInfo, allTickers] = await Promise.all([
-        fetchJson(EXCHANGE_INFO_URL,'exchangeInfo'),
-        fetchJson(TICKER_24HR_ALL,'24hr_all')
-      ]);
-      const allowed = new Set();
-      (exInfo.symbols||[]).forEach(s=>{
-        if(s.status==='TRADING' && s.quoteAsset==='USDT' && s.contractType==='PERPETUAL'){
-          allowed.add(s.symbol);
+      try{
+        const [exInfo, allTickers] = await Promise.all([
+          fetchJson(EXCHANGE_INFO_URL,'exchangeInfo'),
+          fetchJson(TICKER_24HR_ALL,'24hr_all')
+        ]);
+        const allowed = new Set();
+        (exInfo.symbols||[]).forEach(s=>{
+          if(s.status==='TRADING' && s.quoteAsset==='USDT' && s.contractType==='PERPETUAL'){
+            allowed.add(s.symbol);
+          }
+        });
+        const filtered = (allTickers||[]).filter(t=> allowed.has(t.symbol));
+        // 거래대금(quoteVolume) 많음 순
+        filtered.sort((a,b)=> parseFloat(b.quoteVolume||'0') - parseFloat(a.quoteVolume||'0'));
+        const out=[];
+        for(const t of filtered){
+          if(!includeBTC && t.symbol==='BTCUSDT') continue;
+          if(t.symbol==='BTCDOMUSDT') continue; // 도미넌스 제외
+          out.push(t.symbol);
+          if(out.length>=maxCount) break;
         }
-      });
-      const filtered = (allTickers||[]).filter(t=> allowed.has(t.symbol));
-      filtered.sort((a,b)=> parseFloat(b.quoteVolume||'0') - parseFloat(a.quoteVolume||'0'));
-      const out=[];
-      for(const t of filtered){
-        if(!includeBTC && t.symbol==='BTCUSDT') continue;
-        if(t.symbol==='BTCDOMUSDT') continue; // 도미넌스 제외
-        out.push(t.symbol);
-        if(out.length>=maxCount) break;
+        addApiLog(`전체 종목 후보 ${out.length}개 선정`);
+        return out;
+      }catch(e){
+        addApiLog(`전체 종목 수집 실패: ${e.message}`, true);
+        return []; // 호출부에서 폴백
       }
-      addApiLog(`전체 종목 후보 ${out.length}개 선정`);
-      return out;
     }
 
     // ==============================
@@ -788,7 +836,7 @@
         // 전략 & 요약
         const analysisTime = new Date();
         lastAnalyzedAt.textContent = analysisTime.toLocaleString('ko-KR');
-        const strategy = generateOverallTradingStrategy(analysesByInterval);
+        const strategy = generateOverallTradingStrategy(analysesByInterval); // ✅ 누락 함수 호출 복구
         strategyTextP.textContent = strategy;
         strategyContainerDiv.classList.remove('hidden');
 
@@ -847,9 +895,8 @@
         btc4hAdx = dmi4h? dmi4h.adx : null;
 
         const trending = (btc4hAdx && btc4hAdx>=25) || (btc1dAtrPct && btc1dAtrPct>=4);
-        const regimeText = trending? '트렌딩 모드' : '레인지/탐색 구간';
         const fav = altFavorabilityScore(analysesByInterval);
-        renderRegime(regimeText, fav, btc1dAtrPct||0, btc4hAdx||0);
+        renderRegime(trending? '트렌딩 모드' : '레인지/탐색 구간', fav, btc1dAtrPct||0, btc4hAdx||0);
 
         const alerts=[];
         if(btc1dAtrPct!==null && btc1dAtrPct>=6) alerts.push('BTC 1D ATR%가 높습니다(≥6%). 변동성 확대에 유의하세요.');
@@ -861,7 +908,8 @@
 
       }catch(e){
         addApiLog(`분석 실패: ${e.message}`, true);
-        if(errorMessageDiv.classList.contains('hidden')) showError(`분석 중 오류: ${e.message}`);
+        if(errorMessageDiv.classList.contains('hidden')) showError(`분석 중 오류: ${e.message} (로그를 확인하세요)`);
+        console.error(e);
       }finally{
         loadingDiv.classList.add('hidden');
       }
@@ -877,16 +925,24 @@
         const maxN = clamp(parseInt(maxScanSymbolsInput.value)||80, 10, 500);
         const includeBTC = !!includeBTCInput.checked;
         symbols = await getAllUsdtPerpSymbols(maxN, includeBTC);
+        if(!symbols.length){
+          addApiLog('전체 종목 스캔 실패 → 프리셋(core)로 폴백', true);
+          symbols = PRESETS.core.slice();
+        }
       } else {
         const presetVal = presetSelect.value;
         if(presetVal==='custom'){
           const txt = (customSymbolsInput.value||'').trim();
           if(txt) symbols = txt.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
+          if(!symbols.length){
+            addApiLog('커스텀 입력이 비어 있음 → 프리셋(core) 사용', true);
+            symbols = PRESETS.core.slice();
+          }
         } else {
           symbols = PRESETS[presetVal]||PRESETS.core;
         }
       }
-      if(!symbols.length){ addApiLog('스캔할 심볼이 없습니다.', true); return; }
+      if(!symbols.length){ addApiLog('스캔할 심볼이 없습니다.', true); showError('스캔할 심볼이 없습니다. 프리셋을 선택하거나 커스텀을 입력해 주세요.'); return; }
 
       const TOPN = clamp(parseInt(topNInput.value)||12, 3, 50);
 
@@ -1012,12 +1068,12 @@
     // 실행 버튼들
     runNowBtn.addEventListener('click', ()=>performAnalysis());
     scanBtnTop.addEventListener('click', async ()=>{
-      clearError(); addApiLog('스캐너만 단독 실행');
+      clearError(); addApiLog('스캐너 단독 실행');
       const BAL = parseFloat(acctBalanceInput.value)||10000;
       const RISK = clamp(parseFloat(riskPctInput.value)||1, 0.1, 5);
       const SLmult = clamp(parseFloat(atrSLInput.value)||1.5, 0.5, 4);
-      // favorability는 최신 유지가 필요하므로 간단히 0 기반으로 실행하거나, 필요 시 performAnalysis 먼저 권장
-      await runAltScanner(0 /* 우호도 미반영 실행 */, BAL, RISK, SLmult);
+      // favorability는 최신 분석값이 없을 수 있으니 0으로 실행(시장 게이팅 비활성)
+      await runAltScanner(0, BAL, RISK, SLmult);
     });
 
     // 초기화
