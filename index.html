@@ -1,1140 +1,446 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>알트코인 다중 시간대 자동 분석기 (Pro++ v1.1)</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>알트코인 다중 시간대 분석기 Pro+</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet" />
   <style>
-  :root { --chart-h: 72vh; } /* 기본 차트 높이 */
-
-  /* 기본 타이포 & 배경 */
-  body{
-    font-family:'Noto Sans KR',sans-serif;
-    background:#0f172a;
-    color:#e2e8f0;
-    /* ✅ 한글 가독성: 임의 문자 단위 강제 줄바꿈 방지 */
-    word-break: keep-all;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  /* 레이아웃 */
-  .page{
-    max-width:1500px;
-    margin:0 auto;
-    padding:12px;
-
-    display:grid;
-    /* ✅ 사이드바는 240~260px 보장, 메인은 남은 영역을 차지 (축소 시 메인 폭 0 이하로 줄지 않게) */
-    grid-template-columns: minmax(240px,260px) minmax(0,1fr);
-    gap:14px;
-    align-items:start;
-    box-sizing:border-box;
-  }
-
-  /* 사이드바 */
-  .sidebar{
-    position:sticky; top:12px;
-    background:#111827;
-    border:1px solid #1f2937; border-radius:12px;
-    padding:12px;
-    width:260px; flex-shrink:0;
-  }
-  .sidebar h2{font-weight:700;margin-bottom:.5rem}
-  .navlink{
-    display:flex; align-items:center; gap:.5rem;
-    padding:.5rem .6rem; border-radius:.5rem;
-    border:1px solid #1f2937; background:#0b1220;
-    margin-bottom:.5rem; font-size:.95rem; white-space:nowrap;
-  }
-  .navlink:hover{background:#111827}
-  .badge{font-size:.7rem;border:1px solid #374151;border-radius:9999px;padding:.12rem .5rem;color:#a5b4fc}
-
-  /* 메인 패널 */
-  .main{background:#111827;border:1px solid #1f2937;border-radius:12px;padding:14px;min-width:0}
-
-  /* 카드 공통 */
-  .section-card{
-    background:#0b1220; border:1px solid #1f2937; border-radius:.75rem;
-    padding:1rem; margin-bottom:1rem;
-    /* ✅ grid 아이템이 너무 좁아지지 않게 + 내부 요소가 폭을 침범하지 않게 */
-    min-width:0; overflow-wrap:anywhere;
-  }
-
-  /* ✅ 반응형 그리드: auto-fit + minmax 로 최소폭 보장 */
-  .grid2{display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1rem}
-  .grid3{display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:1rem}
-  .grid4{display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:.75rem}
-
-  /* Key-Value 블록 */
-  .kv{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#0b1220;border:1px solid #1f2937;border-radius:.5rem;min-width:0}
-  .kv-label{color:#9ca3af;font-size:.85rem}
-  .kv-value{font-weight:700;overflow:hidden;text-overflow:ellipsis}
-
-  .btn{background:#374151;color:#fff;padding:.6rem 1rem;border-radius:.5rem;font-weight:600;transition:all .15s}
-  .btn:hover{background:#4b5563}
-  .small{font-size:.85rem;color:#94a3b8}
-  input,select{background:#0b1220;border:1px solid #1f2937;border-radius:.5rem;padding:.5rem .6rem;color:#e5e7eb;width:100%}
-
-  /* 표 */
-  .summary-table{width:100%;border-collapse:collapse;text-align:center;font-size:.9rem;table-layout:fixed}
-  .summary-table th,.summary-table td{border:1px solid #1f2937;padding:.6rem .4rem}
-  .summary-table th{background:#0b1020;color:#e5e7eb;position:sticky;top:0;z-index:1}
-  .summary-table td{overflow:hidden;text-overflow:ellipsis}
-  /* 테이블 컨테이너 스크롤 */
-  #summaryTableContainer .overflow-x-auto{max-height:360px;overflow:auto}
-
-  /* 상태 색상 */
-  .trend-up{color:#34d399;font-weight:600}
-  .trend-down{color:#f87171;font-weight:600}
-  .trend-side{color:#fbbf24;font-weight:600}
-
-  /* 로그 */
-  .log-container{background:#0b1020;color:#9ca3af;padding:1rem;border-radius:.5rem;margin-top:1rem;max-height:260px;overflow-y:auto;font-size:.85rem}
-  .log-entry{padding:.25rem 0;border-bottom:1px dashed #1f2937}
-  .log-entry:last-child{border-bottom:none}
-  .log-success{color:#34d399}
-  .log-error{color:#f87171}
-
-  .loader{border:4px solid #f3f3f3;border-top:4px solid #60a5fa;border-radius:50%;width:30px;height:30px;animation:spin 1s linear infinite;margin:1rem auto}
-  @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
-
-  /* 차트 래퍼 */
-  .chart-shell{height:var(--chart-h);width:100%;border-radius:.75rem;overflow:hidden;border:1px solid #1f2937;background:#0b1220}
-
-  .pill{display:inline-block;padding:.2rem .6rem;border-radius:9999px;font-size:.75rem;font-weight:600}
-  .pill-green{background:#064e3b;color:#a7f3d0;border:1px solid #065f46}
-  .pill-yellow{background:#78350f;color:#fde68a;border:1px solid #92400e}
-
-  /* 아코디언(기본 접힘) */
-  .accordion details{border:1px solid #1f2937;border-radius:.6rem;background:#0a0f1d;margin-bottom:.6rem}
-  .accordion summary{cursor:pointer;list-style:none;padding:.7rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:.6rem}
-  .accordion summary::-webkit-details-marker{display:none}
-  .accordion .acc-body{padding:.6rem 1rem 1rem}
-
-  /* 리스크 경고 텍스트: 가독성 보장 */
-  #riskAlerts{word-break:keep-all;line-height:1.5}
-
-  /* 모바일 사이드바 오버레이 */
-  .sidebar-toggle{display:none !important} /* ✅ 데스크톱 강제 비표시 */
-  @media (max-width: 1024px){
-    .page{grid-template-columns:1fr}
-    .sidebar{
-      position:fixed;left:0;top:0;bottom:0;width:84%;max-width:320px;
-      transform:translateX(-100%);transition:transform .2s ease;z-index:50
-    }
-    .sidebar.open{transform:translateX(0)}
-    .sidebar-toggle{display:inline-flex !important} /* ✅ 모바일에서만 표시 */
-    .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);z-index:40;display:none}
-    .backdrop.show{display:block}
-  }
-</style>
-
+    :root{--bg:#08131d;--card:#10202f;--line:#274258;--tx:#e4edf3;--sub:#9ab0bf;--up:#34d399;--dn:#fb7185;--flat:#fbbf24}
+    body{font-family:"Nanum Gothic",sans-serif;background:radial-gradient(900px 500px at 10% -20%,rgba(56,189,248,.2),transparent 60%),radial-gradient(900px 500px at 100% 0%,rgba(251,146,60,.16),transparent 62%),#060f18;color:var(--tx)}
+    .app{max-width:1320px;margin:1.5rem auto;padding:1rem}
+    .panel{background:linear-gradient(180deg,#101d2a,#122333);border:1px solid var(--line);border-radius:.9rem;padding:1rem;box-shadow:0 10px 24px rgba(0,0,0,.3)}
+    .panel h2,.panel h3{font-family:"Do Hyeon",sans-serif;letter-spacing:.02em}
+    .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+    .grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem}
+    .kv{display:flex;justify-content:space-between;align-items:center;background:rgba(7,16,25,.72);border:1px solid #274154;border-radius:.6rem;padding:.45rem .6rem;margin-bottom:.45rem;font-size:.9rem}
+    .small{font-size:.78rem;color:var(--sub)}
+    .tag{border:1px solid #2f5f80;background:rgba(56,189,248,.1);border-radius:9999px;padding:.15rem .5rem;font-size:.73rem;color:#9ad7f7}
+    .btn{border:1px solid #33516a;background:linear-gradient(180deg,#17334b,#122b40);padding:.55rem .95rem;border-radius:.6rem;font-weight:700}
+    .btn:hover{border-color:#46739a}
+    .input{width:100%;padding:.5rem .6rem;border:1px solid #2d485f;border-radius:.55rem;background:#0a1622;color:var(--tx)}
+    .pill{display:inline-block;border-radius:9999px;padding:.2rem .65rem;border:1px solid transparent;font-size:.76rem;font-weight:700}
+    .pill-up{color:#9ef7d3;background:rgba(6,95,70,.22);border-color:#0e7f60}
+    .pill-dn{color:#fecdd3;background:rgba(190,24,93,.2);border-color:#be123c}
+    .pill-md{color:#fde68a;background:rgba(161,98,7,.24);border-color:#a16207}
+    .summary{width:100%;border-collapse:collapse;text-align:center;font-size:.85rem}
+    .summary th,.summary td{border:1px solid #27425a;padding:.46rem .3rem;white-space:nowrap}
+    .summary th{position:sticky;top:0;background:#0c1824;z-index:1}
+    .up{color:var(--up);font-weight:700}.dn{color:var(--dn);font-weight:700}.flat{color:var(--flat);font-weight:700}
+    .reason{border:1px solid #2a465d;border-radius:.72rem;padding:.8rem;background:rgba(8,20,30,.74);margin-bottom:.65rem}
+    .log{border:1px solid #2e465c;border-radius:.72rem;background:rgba(6,16,24,.7);max-height:220px;overflow-y:auto;padding:.7rem;font-size:.8rem;color:#97aabc}
+    .log-item{border-bottom:1px dashed #2c475f;padding-bottom:.25rem;margin-bottom:.25rem}
+    .ok{color:#7ce9c1}.err{color:#fda4af}
+    .loader{width:32px;height:32px;border:4px solid rgba(148,163,184,.28);border-top:4px solid #38bdf8;border-radius:50%;animation:spin .9s linear infinite;margin:0 auto .5rem}
+    @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+    @media(max-width:1100px){.grid3{grid-template-columns:1fr}.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:640px){.grid4{grid-template-columns:1fr}}
+  </style>
 </head>
 <body class="antialiased">
+<div class="app">
+  <header class="text-center mb-5">
+    <h1 class="text-3xl text-white">알트코인 다중 시간대 분석기 <span class="tag">Pro+</span></h1>
+    <p class="text-slate-300 mt-2">고급 기술지표 컨플루언스 + 리스크 필터 기반 실전형 스캐너</p>
+    <p class="small mt-1">분석 결과는 참고용입니다.</p>
+  </header>
 
-  <div class="page">
-    <!-- 사이드바 -->
-    <aside id="sidebar" class="sidebar">
-      <h2 class="text-lg">📚 메뉴</h2>
-      <a class="navlink" href="#dashboard">대시보드 <span class="badge">현재가/레짐/경고</span></a>
-      <a class="navlink" href="#strategyContainer">📜 종합 전략</a>
-      <a class="navlink" href="#summaryTableContainer">🗂 요약 테이블</a>
-      <a class="navlink" href="#detailedReasoningWrapper">🧠 상세 분석 근거</a>
-      <a class="navlink" href="#altScannerSection">🔍 알트 스캐너 & 설정</a>
-      <a class="navlink" href="#chartSection">📈 비트코인 차트</a>
-      <a class="navlink" href="#apiLogContainer">🧾 API 로그</a>
-    </aside>
-    <div id="sidebarBackdrop" class="backdrop"></div>
+  <section class="grid3 mb-4">
+    <div class="panel"><h3 class="text-lg mb-2">현재 시장 지표</h3><div id="currentPrices"></div><p id="analysisTime" class="small mt-2">최근 분석 시각: -</p><button id="runTop" class="btn mt-2 w-full">다시 분석 실행</button></div>
+    <div class="panel"><h3 class="text-lg mb-2">시장 레짐</h3><div id="regimeBox"></div></div>
+    <div class="panel"><h3 class="text-lg mb-2">리스크 경고</h3><ul id="riskAlerts" class="list-disc pl-5 text-sm text-rose-200"></ul></div>
+  </section>
 
-    <!-- 메인 -->
-    <main class="main">
-      <!-- 헤더 바 -->
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-2">
-          <button id="menuBtn" class="sidebar-toggle btn">메뉴</button>
-          <h1 class="text-2xl font-bold text-white">알트코인 다중 시간대 자동 분석기 <span class="badge">Pro++ v1.1</span></h1>
-        </div>
-        <div class="flex items-center gap-3 small">
-          <div>마지막 분석: <b id="lastAnalyzedAt">-</b></div>
-          <button id="runNow" class="btn">지금 다시 분석 🔄</button>
-        </div>
-      </div>
+  <section id="strategyContainer" class="panel mb-4 hidden"><h2 class="text-xl mb-2">종합 전략 브리핑</h2><p id="strategyText" class="text-sm leading-6"></p></section>
 
-      <!-- 대시보드 -->
-      <section id="dashboard" class="grid3">
-        <div class="section-card">
-          <h3 class="font-bold mb-2">📌 현재 지표</h3>
-          <div id="currentPrices" class="grid2"></div>
-        </div>
-        <div class="section-card">
-          <h3 class="font-bold mb-2">🧭 시장 레짐 & 알트 우호도</h3>
-          <div id="regimeBox" class="space-y-2"></div>
-        </div>
-        <div class="section-card">
-          <h3 class="font-bold mb-2">⚠️ 리스크 경고</h3>
-          <ul id="riskAlerts" class="list-disc pl-5 text-sm text-red-300"></ul>
-        </div>
-      </section>
+  <section id="summaryTableContainer" class="panel mb-4 hidden">
+    <h2 id="summaryTitle" class="text-xl mb-3 text-center">시간대별 요약</h2>
+    <div class="overflow-x-auto" style="max-height:320px;overflow-y:auto;">
+      <table class="summary"><thead><tr><th>시간</th><th>BTC 추세</th><th>DOM 추세</th><th>알트 시나리오</th><th>BTC 점수</th><th>DOM 점수</th></tr></thead><tbody id="summaryTableBody"></tbody></table>
+    </div>
+  </section>
 
-      <!-- 종합 전략 -->
-      <section id="strategyContainer" class="section-card hidden">
-        <h2 class="text-xl font-bold mb-2">📜 종합 매매 전략 가이드</h2>
-        <p id="strategyText" class="text-base"></p>
-      </section>
+  <section class="panel mb-4">
+    <div class="flex items-center justify-between mb-2"><h2 class="text-xl">시간대별 상세 근거</h2><button id="toggleReasoningBtn" class="btn">상세 근거 보기</button></div>
+    <div id="detailedReasoningContainer" class="hidden"></div>
+    <p class="small mt-2">추세, 모멘텀, 변동성, 거래량 신호를 통합한 점수입니다.</p>
+  </section>
 
-      <!-- 요약 테이블 -->
-      <section id="summaryTableContainer" class="section-card hidden">
-        <h2 id="summaryTitle" class="text-xl font-bold mb-3 text-center">시간대별 요약</h2>
-        <div class="overflow-x-auto" style="max-height:360px;overflow-y:auto;">
-          <table class="summary-table">
-            <thead>
-              <tr>
-                <th>시간 간격</th>
-                <th>BTC 추세</th>
-                <th>BTCDOM 추세</th>
-                <th>알트코인 예측</th>
-              </tr>
-            </thead>
-            <tbody id="summaryTableBody"></tbody>
-          </table>
-        </div>
-      </section>
+  <section class="panel mb-4">
+    <h2 class="text-xl mb-3">트레이딩 설정</h2>
+    <div class="grid4">
+      <div><label class="small">계좌 잔고 (USDT)</label><input id="acctBalance" class="input" type="number" min="100" step="50" value="10000" /></div>
+      <div><label class="small">거래당 위험 (%)</label><input id="riskPct" class="input" type="number" min="0.1" step="0.1" value="1" /></div>
+      <div><label class="small">ATR 손절 배수</label><input id="atrSL" class="input" type="number" min="0.5" step="0.1" value="1.6" /></div>
+      <div><label class="small">상위 후보 수</label><input id="topN" class="input" type="number" min="3" step="1" value="10" /></div>
+    </div>
+    <div class="grid4 mt-3">
+      <div><label class="small">스캔 프리셋</label><select id="preset" class="input"><option value="core">Core L1/L2 (기본)</option><option value="majors">Top Majors</option><option value="meme">Memes</option><option value="lowcap">저시총 알트</option><option value="all" disabled>전체 코인 (로딩 중)</option><option value="custom">커스텀</option></select></div>
+      <div class="col-span-3"><label class="small">커스텀 심볼 (쉼표 구분)</label><input id="customSymbols" class="input" type="text" placeholder="예: ETHUSDT,SOLUSDT,AVAXUSDT" /></div>
+    </div>
+    <div class="mt-3 flex items-center gap-2"><button id="runNow" class="btn">즉시 분석 실행</button><span class="small">상위 후보만 Funding/OI 추가 조회</span></div>
+  </section>
 
-      <!-- 상세 근거 (기본 접힘 + 전체 토글) -->
-      <section id="detailedReasoningWrapper" class="section-card">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="text-xl font-bold">🧠 시간대별 상세 분석 근거</h2>
-          <div class="flex gap-2">
-            <button id="expandAll" class="btn">전체 펼치기 ⬇️</button>
-            <button id="collapseAll" class="btn">전체 접기 ⬆️</button>
-          </div>
-        </div>
-        <div id="detailedReasoningContainer" class="accordion"></div>
-        <div class="small text-gray-400 mt-1">※ 기본은 접혀 있으며, 필요할 때만 펼쳐서 확인하세요.</div>
-      </section>
+  <section class="panel mb-4">
+    <h2 class="text-xl mb-3">알트코인 스캐너 (15m·1h·4h)</h2>
+    <p class="small mb-2">Score = 추세 + 모멘텀 + 변동성 + 거래량 + 리스크 조정. Confluence = 시간대 정렬 강도.</p>
+    <div class="overflow-x-auto">
+      <table class="summary"><thead><tr><th>순위</th><th>심볼</th><th>시간</th><th>방향</th><th>Score</th><th>Confluence</th><th>Confidence</th><th>가격</th><th>ATR%</th><th>ADX</th><th>Stoch RSI</th><th>Squeeze</th><th>Entry</th><th>SL</th><th>TP1</th><th>TP2</th><th>R:R</th><th>권장 수량</th><th>권장 레버리지</th><th>Funding</th><th>OI</th><th>리스크 플래그</th></tr></thead><tbody id="altTableBody"></tbody></table>
+    </div>
+  </section>
 
-      <!-- 알트 스캐너 + (트레이딩 설정 이동) -->
-      <section id="altScannerSection" class="section-card">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-xl font-bold">🔍 알트코인 스캐너 (15m·1h·4h)</h2>
-          <div class="flex items-center gap-2">
-            <button id="scanBtnTop" class="btn">스캔 실행 🚀</button>
-          </div>
-        </div>
+  <section class="panel mb-4">
+    <div class="tradingview-widget-container" style="height:510px;width:100%;">
+      <div id="tradingview-widget-container-inner" style="height:calc(100% - 32px);width:100%;"></div>
+      <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="text-sky-300 text-sm">Track markets on TradingView</span></a></div>
+    </div>
+  </section>
 
-        <!-- 트레이딩 설정 & 스캔 범위 -->
-        <div class="grid3" style="margin-bottom:.75rem;">
-          <div><label class="small">계좌 잔고 (USDT)</label><input id="acctBalance" type="number" min="100" step="50" value="10000"/></div>
-          <div><label class="small">거래당 위험 (%)</label><input id="riskPct" type="number" min="0.1" step="0.1" value="1"/></div>
-          <div><label class="small">ATR 손절 배수</label><input id="atrSL" type="number" min="0.5" step="0.1" value="1.5"/></div>
-        </div>
+  <section class="panel mb-4">
+    <div class="tradingview-widget-container" style="height:510px;width:100%;">
+      <div id="tradingview-widget-container-dominance-inner" style="height:calc(100% - 32px);width:100%;"></div>
+      <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="text-sky-300 text-sm">Track markets on TradingView</span></a></div>
+    </div>
+  </section>
 
-        <div class="grid3" style="margin-bottom:.75rem;">
-          <div><label class="small">최대 스캔 심볼 수 (거래대금 상위)</label><input id="maxScanSymbols" type="number" min="10" step="10" value="80"/></div>
-          <div>
-            <label class="small">BTC 포함</label>
-            <div class="flex items-center gap-2">
-              <input id="includeBTC" type="checkbox"/>
-              <span class="small">기본 제외</span>
-            </div>
-          </div>
-          <div>
-            <label class="small">차트 높이 (뷰포트 비율 50~90)</label>
-            <div class="flex items-center gap-3">
-              <input id="chartHeightRange" type="range" min="50" max="90" step="1" value="72" style="width: 100%;">
-              <span class="small">현재: <b id="chartHeightVal">72</b>vh</span>
-            </div>
-          </div>
-        </div>
+  <div id="loading" class="hidden text-center"><div class="loader"></div><p class="text-slate-300">데이터 수집 및 분석 중...</p></div>
+  <div id="errorMessage" class="hidden mt-3 p-3 bg-rose-700 text-white rounded-md"></div>
+  <div id="apiLogContainer" class="log hidden mt-3"><h3 class="text-base text-white mb-2">API 호출 로그</h3><div id="apiLogEntries"></div></div>
+</div>
 
-        <div class="small muted mb-2">※ USDT-M PERP **거래대금 상위 N개**를 자동 선별 후 분석합니다.</div>
+<script>
+const API={KLINE:'https://fapi.binance.com/fapi/v1/klines',TICKER:'https://fapi.binance.com/fapi/v1/ticker/24hr',OI:'https://fapi.binance.com/fapi/v1/openInterest',FUNDING:'https://fapi.binance.com/fapi/v1/fundingRate',EXCHANGE:'https://fapi.binance.com/fapi/v1/exchangeInfo'};
+const LIMIT=260;
+const INTERVALS=['5m','15m','1h','4h','1d'];
+const ALT_INTERVALS=['15m','1h','4h'];
+const TF_WEIGHT={'5m':1,'15m':2,'1h':3,'4h':5,'1d':7};
+const ALT_TF_WEIGHT={'15m':1,'1h':2,'4h':3};
+const TREND_TH={'5m':0.2,'15m':0.3,'1h':0.5,'4h':0.8,'1d':1.0};
+const PRESETS={
+  core:['ETHUSDT','SOLUSDT','BNBUSDT','LINKUSDT','AVAXUSDT','ARBUSDT','OPUSDT','NEARUSDT','SUIUSDT','APTUSDT','ATOMUSDT','MATICUSDT'],
+  majors:['ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT','ADAUSDT','AVAXUSDT','TRXUSDT','LINKUSDT','DOTUSDT','NEARUSDT','UNIUSDT'],
+  meme:['DOGEUSDT','SHIBUSDT','PEPEUSDT','FLOKIUSDT','BONKUSDT','WIFUSDT','BOMEUSDT','MEWUSDT','BRETTUSDT','POPCATUSDT'],
+  lowcap:['STORJUSDT','CELOUSDT','ANKRUSDT','IOTXUSDT','ZILUSDT','ONEUSDT','LRCUSDT','KNCUSDT','CTSIUSDT','DUSKUSDT','BLZUSDT','ARPAUSDT'],
+  all:[]
+};
 
-        <div class="flex items-center gap-2 mb-2">
-          <button id="sortScore" class="btn">점수순</button>
-          <button id="sortMajors" class="btn">탑 메이저 우선</button>
-          <button id="sortCore" class="btn">코어 우선</button>
-          <button id="sortMeme" class="btn">밈 우선</button>
-        </div>
+const el={
+  loading:document.getElementById('loading'),error:document.getElementById('errorMessage'),logWrap:document.getElementById('apiLogContainer'),log:document.getElementById('apiLogEntries'),
+  current:document.getElementById('currentPrices'),analysisTime:document.getElementById('analysisTime'),regime:document.getElementById('regimeBox'),alerts:document.getElementById('riskAlerts'),
+  strategyWrap:document.getElementById('strategyContainer'),strategy:document.getElementById('strategyText'),
+  summaryWrap:document.getElementById('summaryTableContainer'),summaryTitle:document.getElementById('summaryTitle'),summaryBody:document.getElementById('summaryTableBody'),
+  reasonWrap:document.getElementById('detailedReasoningContainer'),toggleReason:document.getElementById('toggleReasoningBtn'),
+  balance:document.getElementById('acctBalance'),risk:document.getElementById('riskPct'),atrSL:document.getElementById('atrSL'),topN:document.getElementById('topN'),
+  preset:document.getElementById('preset'),custom:document.getElementById('customSymbols'),run:document.getElementById('runNow'),runTop:document.getElementById('runTop'),
+  altBody:document.getElementById('altTableBody')
+};
 
-        <div class="overflow-x-auto">
-          <table class="summary-table">
-            <thead>
-              <tr>
-                <th>순위</th>
-                <th>심볼</th>
-                <th>분류</th>
-                <th>시간대</th>
-                <th>방향</th>
-                <th>스코어</th>
-                <th>가격</th>
-                <th>ATR</th>
-                <th>ADX</th>
-                <th>+DI</th>
-                <th>-DI</th>
-                <th>RVOL</th>
-                <th>스퀴즈</th>
-                <th>엔트리</th>
-                <th>SL</th>
-                <th>TP1</th>
-                <th>R:R</th>
-                <th>권장 수량</th>
-                <th>권장 레버리지</th>
-                <th>Funding</th>
-                <th>OI</th>
-                <th>비고</th>
-              </tr>
-            </thead>
-            <tbody id="altTableBody"></tbody>
-          </table>
-        </div>
-      </section>
+const fmt=(n,d=2)=>n===null||n===undefined||Number.isNaN(n)?'-':Number(n).toLocaleString(undefined,{maximumFractionDigits:d});
+const fix=(n,d=2)=>n===null||n===undefined||Number.isNaN(n)?'-':Number(n).toFixed(d);
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
 
-      <!-- 비트코인 차트 (높이 가변) -->
-      <section id="chartSection" class="section-card">
-        <h2 class="text-xl font-bold mb-2">📈 비트코인 차트</h2>
-        <div class="chart-shell">
-          <div class="tradingview-widget-container" style="height:100%;width:100%;">
-            <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%;"></div>
-            <div class="tradingview-widget-copyright">
-              <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a>
-            </div>
-            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-            {
-              "width": "100%",
-              "height": "100%",
-              "symbol": "BINANCE:BTCUSDT",
-              "interval": "60",
-              "timezone": "Etc/UTC",
-              "theme": "dark",
-              "style": "1",
-              "locale": "ko",
-              "allow_symbol_change": true,
-              "support_host": "https://www.tradingview.com"
-            }
-            </script>
-          </div>
-        </div>
-      </section>
+function log(msg,err=false){el.logWrap.classList.remove('hidden');const d=document.createElement('div');d.className=`log-item ${err?'err':'ok'}`;d.textContent=`[${new Date().toLocaleTimeString()}] ${msg}`;el.log.appendChild(d);el.log.scrollTop=el.log.scrollHeight;}
+function clearLog(){el.log.innerHTML='';}
+function showError(msg){el.error.textContent=msg;el.error.classList.remove('hidden');}
+function clearError(){el.error.textContent='';el.error.classList.add('hidden');}
 
-      <!-- 로딩/오류/로그 -->
-      <div id="loading" class="hidden text-center">
-        <div class="loader"></div>
-        <p class="text-gray-400">데이터 수집 및 분석 중…</p>
-      </div>
-      <div id="errorMessage" class="hidden mt-3 p-3 bg-red-600 text-white rounded-md"></div>
-      <div id="apiLogContainer" class="log-container hidden">
-        <h3 class="text-lg font-semibold text-white mb-2">API 호출 로그</h3>
-        <div id="apiLogEntries"></div>
-      </div>
+async function fetchJson(url,tag='API',timeout=12000){
+  log(`GET ${url}`);
+  const c=new AbortController();const t=setTimeout(()=>c.abort(),timeout);
+  try{
+    const r=await fetch(url,{signal:c.signal});
+    if(!r.ok){const tx=await r.text().catch(()=>"");log(`${tag} ${r.status}: ${tx.slice(0,120)}`,true);throw new Error(`${tag} ${r.status}`);}
+    return await r.json();
+  }catch(e){log(`${tag} 실패: ${e.message}`,true);throw e;} finally{clearTimeout(t);}
+}
 
-    </main>
-  </div>
+async function mapLimit(items,limit,fn){
+  const out=new Array(items.length);let i=0;
+  const workers=Array.from({length:Math.min(limit,items.length)},async()=>{while(i<items.length){const cur=i++;out[cur]=await fn(items[cur],cur);}});
+  await Promise.all(workers);return out;
+}
 
-  <script>
-    // ==============================
-    // CONFIG
-    // ==============================
-    const KLINE_API_URL = 'https://fapi.binance.com/fapi/v1/klines';
-    const TICKER_API_URL = 'https://fapi.binance.com/fapi/v1/ticker/24hr';
-    const TICKER_24HR_ALL = 'https://fapi.binance.com/fapi/v1/ticker/24hr';
-    const EXCHANGE_INFO_URL = 'https://fapi.binance.com/fapi/v1/exchangeInfo';
-    const OI_API_URL = 'https://fapi.binance.com/fapi/v1/openInterest';
-    const FUNDING_API_URL = 'https://fapi.binance.com/fapi/v1/fundingRate';
-    const KLINE_LIMIT = 200;
+const sma=(a,p)=>!a||a.length<p?null:a.slice(-p).reduce((x,y)=>x+y,0)/p;
+function smaSeries(a,p){if(!a||a.length<p)return[];const o=[];let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=p)s-=a[i-p];if(i>=p-1)o[i]=s/p;}return o;}
+function ema(a,p){if(!a||a.length<p)return null;const k=2/(p+1);let prev=sma(a.slice(0,p),p);for(let i=p;i<a.length;i++)prev=a[i]*k+prev*(1-k);return prev;}
+function emaSeries(a,p){if(!a||a.length<p)return[];const k=2/(p+1),o=[];let prev=sma(a.slice(0,p),p);o[p-1]=prev;for(let i=p;i<a.length;i++){prev=a[i]*k+prev*(1-k);o[i]=prev;}return o;}
+const std=(a)=>{if(!a||!a.length)return null;const m=a.reduce((x,y)=>x+y,0)/a.length;return Math.sqrt(a.reduce((x,y)=>x+(y-m)*(y-m),0)/a.length);};
+const tr=(h,l,c)=>Math.max(h-l,Math.abs(h-c),Math.abs(l-c));
+function atr(kl,p=14){if(!kl||kl.length<p+1)return null;const t=[];for(let i=1;i<kl.length;i++)t.push(tr(+kl[i][2],+kl[i][3],+kl[i-1][4]));let a=0;for(let i=0;i<p;i++)a+=t[i];a/=p;for(let i=p;i<t.length;i++)a=(a*(p-1)+t[i])/p;return a;}
+function atrSeries(kl,p=14){if(!kl||kl.length<p+1)return[];const t=[];for(let i=1;i<kl.length;i++)t.push(tr(+kl[i][2],+kl[i][3],+kl[i-1][4]));const o=[];let a=0;for(let i=0;i<p;i++)a+=t[i];a/=p;o[p]=a;for(let i=p;i<t.length;i++){a=(a*(p-1)+t[i])/p;o[i+1]=a;}return o;}
+function rsiSeries(cl,p=14){if(!cl||cl.length<p+1)return[];const ch=[];for(let i=1;i<cl.length;i++)ch.push(cl[i]-cl[i-1]);let g=0,l=0;for(let i=0;i<p;i++){if(ch[i]>0)g+=ch[i];else l+=Math.abs(ch[i]);}let ag=g/p,al=l/p;const o=[al===0?100:100-100/(1+ag/al)];for(let i=p;i<ch.length;i++){const c=ch[i],gg=c>0?c:0,ll=c<0?Math.abs(c):0;ag=(ag*(p-1)+gg)/p;al=(al*(p-1)+ll)/p;o.push(al===0?100:100-100/(1+ag/al));}return o;}
+function stochRsi(cl,rp=14,sp=14,kp=3,dp=3){const r=rsiSeries(cl,rp);if(r.length<sp+kp)return null;const raw=[];for(let i=sp-1;i<r.length;i++){const s=r.slice(i-sp+1,i+1),hi=Math.max(...s),lo=Math.min(...s);raw.push(hi===lo?50:(r[i]-lo)/(hi-lo)*100);}if(raw.length<kp+dp)return null;const ks=smaSeries(raw,kp).filter(v=>v!==undefined);if(ks.length<dp)return null;const ds=smaSeries(ks,dp).filter(v=>v!==undefined);if(!ds.length)return null;return{k:ks.at(-1),d:ds.at(-1)};}
+function macd(cl,f=12,s=26,sg=9){if(!cl||cl.length<s+sg)return null;const ef=emaSeries(cl,f),es=emaSeries(cl,s),ml=[];for(let i=0;i<cl.length;i++)if(ef[i]!==undefined&&es[i]!==undefined)ml.push(ef[i]-es[i]);if(ml.length<sg+2)return null;const sig=emaSeries(ml,sg).filter(v=>v!==undefined);if(sig.length<2)return null;return{hist:ml.at(-1)-sig.at(-1),prevHist:ml.at(-2)-sig.at(-2)};}
+function boll(cl,p=20,m=2){if(!cl||cl.length<p)return null;const s=cl.slice(-p),mean=s.reduce((x,y)=>x+y,0)/p,sd=std(s);if(sd===null)return null;return{mid:mean,upper:mean+m*sd,lower:mean-m*sd,bw:(2*m*sd)/(mean||1)};}
+function kelt(kl,p=20,m=1.5){if(!kl||kl.length<p+1)return null;const cl=kl.map(k=>+k[4]),mid=ema(cl,p),a=atr(kl,p);if(mid===null||a===null)return null;return{upper:mid+m*a,lower:mid-m*a};}
+function squeezeState(kl){const cl=kl.map(k=>+k[4]),bb=boll(cl,20,2),kc=kelt(kl,20,1.5);if(!bb||!kc)return{on:false,fire:false};const on=bb.upper<kc.upper&&bb.lower>kc.lower;if(kl.length<45)return{on,fire:false};const pkl=kl.slice(0,-1),pbb=boll(pkl.map(k=>+k[4]),20,2),pkc=kelt(pkl,20,1.5);const prevOn=!!(pbb&&pkc&&pbb.upper<pkc.upper&&pbb.lower>pkc.lower);return{on,fire:prevOn&&!on};}
+function dmiAdx(kl,p=14){
+  if(!kl||kl.length<p+2)return null;
+  const h=kl.map(k=>+k[2]),l=kl.map(k=>+k[3]),c=kl.map(k=>+k[4]),TR=[],pDM=[],mDM=[];
+  for(let i=1;i<c.length;i++){
+    const up=h[i]-h[i-1],dn=l[i-1]-l[i];
+    pDM.push(up>dn&&up>0?up:0);mDM.push(dn>up&&dn>0?dn:0);TR.push(tr(h[i],l[i],c[i-1]));
+  }
+  let trN=0,pN=0,mN=0;for(let i=0;i<p;i++){trN+=TR[i];pN+=pDM[i];mN+=mDM[i];}
+  const DX=[];let lp=null,lm=null;
+  for(let i=p;i<TR.length;i++){
+    trN=trN-trN/p+TR[i];pN=pN-pN/p+pDM[i];mN=mN-mN/p+mDM[i];
+    const pdi=trN===0?0:100*(pN/trN),mdi=trN===0?0:100*(mN/trN),dx=(pdi+mdi===0)?0:100*Math.abs(pdi-mdi)/(pdi+mdi);
+    DX.push(dx);lp=pdi;lm=mdi;
+  }
+  if(DX.length<p)return null;
+  let adx=DX.slice(0,p).reduce((x,y)=>x+y,0)/p;for(let i=p;i<DX.length;i++)adx=(adx*(p-1)+DX[i])/p;
+  return{adx,pdi:lp,mdi:lm};
+}
+function supertrend(kl,p=10,m=3){
+  if(!kl||kl.length<p+2)return null;
+  const as=atrSeries(kl,p),n=kl.length,fu=[],fl=[],td=[];
+  for(let i=0;i<n;i++){
+    const a=as[i];if(a===undefined)continue;
+    const h=+kl[i][2],l=+kl[i][3],c=+kl[i][4],hl2=(h+l)/2,bU=hl2+m*a,bL=hl2-m*a;
+    if(i===0||fu[i-1]===undefined){fu[i]=bU;fl[i]=bL;td[i]=c>=hl2?'UP':'DOWN';continue;}
+    const pc=+kl[i-1][4];
+    fu[i]=(bU<fu[i-1]||pc>fu[i-1])?bU:fu[i-1];
+    fl[i]=(bL>fl[i-1]||pc<fl[i-1])?bL:fl[i-1];
+    if(td[i-1]==='DOWN'&&c>fu[i])td[i]='UP';else if(td[i-1]==='UP'&&c<fl[i])td[i]='DOWN';else td[i]=td[i-1];
+  }
+  return td.at(-1)?{trend:td.at(-1),value:td.at(-1)==='UP'?fl.at(-1):fu.at(-1)}:null;
+}
 
-    const INTERVALS_TO_ANALYZE = ['5m','15m','1h','4h','1d']; // BTC/BTCDOM
-    const ALT_INTERVALS = ['15m','1h','4h'];
-    const TIMEFRAME_WEIGHT = {'5m':1,'15m':2,'1h':3,'4h':5,'1d':7};
-    const TREND_THRESHOLD_PERCENT = {'5m':0.2,'15m':0.3,'1h':0.5,'4h':0.8,'1d':1.0};
+function chop(kl,p=14){
+  if(!kl||kl.length<p+1)return null;
+  const st=kl.length-p;let sum=0,hh=-Infinity,ll=Infinity;
+  for(let i=st;i<kl.length;i++){
+    const h=+kl[i][2],l=+kl[i][3];hh=Math.max(hh,h);ll=Math.min(ll,l);
+    if(i>0)sum+=tr(h,l,+kl[i-1][4]);
+  }
+  if(hh===ll||sum<=0)return null;
+  return 100*(Math.log10(sum/(hh-ll))/Math.log10(p));
+}
 
-    const SMA_SHORT_PERIOD = 5;
-    const SMA_LONG_PERIOD = 20;
-    const RSI_PERIOD = 14;
-    const ATR_PERIOD = 14;
-    const DMI_PERIOD = 14;
-    const BB_PERIOD = 20, BB_MULT = 2;
-    const EMA_FAST = 12, EMA_SLOW = 26, MACD_SIGNAL = 9;
+function rollingVwap(kl,lb=120){
+  if(!kl||!kl.length)return null;
+  const s=kl.slice(-lb);let pv=0,vv=0;
+  for(const k of s){const h=+k[2],l=+k[3],c=+k[4],v=+k[5],tp=(h+l+c)/3;pv+=tp*v;vv+=v;}
+  return vv===0?null:pv/vv;
+}
 
-    // PRESETS
-      const PRESETS = {
-        core: ['ETHUSDT','SOLUSDT','BNBUSDT','LINKUSDT','AVAXUSDT','OPUSDT','ARBUSDT','NEARUSDT','SUIUSDT','APTUSDT','ATOMUSDT','MATICUSDT'],
-        majors: ['ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT','ADAUSDT','AVAXUSDT','TRXUSDT','LINKUSDT','DOTUSDT','NEARUSDT','UNIUSDT'],
-        meme: ['DOGEUSDT','SHIBUSDT','PEPEUSDT','FLOKIUSDT','BONKUSDT','WIFUSDT','MEWUSDT','POLYUSDT','LADYSUSDT','BRETTUSDT']
-      };
+function donchian(kl,p=20){
+  if(!kl||kl.length<p)return null;
+  const s=kl.slice(-p),hi=Math.max(...s.map(k=>+k[2])),lo=Math.min(...s.map(k=>+k[3]));
+  return{upper:hi,lower:lo,mid:(hi+lo)/2};
+}
 
-      function getSymbolCategory(sym){
-        if(PRESETS.majors.includes(sym)) return 'Top Majors';
-        if(PRESETS.meme.includes(sym)) return 'Meme';
-        if(PRESETS.core.includes(sym)) return 'Core';
-        return 'Other';
-      }
+function structureFromRecent(cl){
+  if(!cl||cl.length<12)return'MIX';
+  const i=cl.length-1,rh=Math.max(cl[i-1],cl[i-2],cl[i-3],cl[i-4]),ph=Math.max(cl[i-5],cl[i-6],cl[i-7],cl[i-8]),
+        rl=Math.min(cl[i-1],cl[i-2],cl[i-3],cl[i-4]),pl=Math.min(cl[i-5],cl[i-6],cl[i-7],cl[i-8]);
+  if(rh>ph&&rl>pl)return'BULL';if(rh<ph&&rl<pl)return'BEAR';return'MIX';
+}
 
-    // ==============================
-    // DOM
-    // ==============================
-    const loadingDiv = document.getElementById('loading');
-    const errorMessageDiv = document.getElementById('errorMessage');
-    const apiLogContainerDiv = document.getElementById('apiLogContainer');
-    const apiLogEntriesDiv = document.getElementById('apiLogEntries');
+function volDelta(kl,lb=20){
+  if(!kl||kl.length<lb)return 0;
+  const s=kl.slice(-lb);let net=0,total=0;
+  for(const k of s){const o=+k[1],c=+k[4],v=+k[5];total+=v;net+=(c>=o?v:-v);}return total===0?0:net/total;
+}
 
-    const currentPricesDiv = document.getElementById('currentPrices');
-    const regimeBox = document.getElementById('regimeBox');
-    const riskAlerts = document.getElementById('riskAlerts');
+async function getTicker(sym){try{const j=await fetchJson(`${API.TICKER}?symbol=${sym}`,'Ticker');return +j.lastPrice;}catch{log(`${sym} ticker 실패`,true);return null;}}
+async function getKlines(sym,itv,limit=LIMIT){return await fetchJson(`${API.KLINE}?symbol=${sym}&interval=${itv}&limit=${limit}`,'Kline');}
+async function getFunding(sym){try{const j=await fetchJson(`${API.FUNDING}?symbol=${sym}&limit=1`,'Funding');return Array.isArray(j)&&j.length?+j[0].fundingRate*100:null;}catch{return null;}}
+async function getOI(sym){try{const j=await fetchJson(`${API.OI}?symbol=${sym}`,'OI');return +j.openInterest;}catch{return null;}}
 
-    const strategyContainerDiv = document.getElementById('strategyContainer');
-    const strategyTextP = document.getElementById('strategyText');
-    const summaryTableContainerDiv = document.getElementById('summaryTableContainer');
-    const summaryTableBody = document.getElementById('summaryTableBody');
-    const summaryTitleH2 = document.getElementById('summaryTitle');
+async function fetchAllSymbols(){
+  log('전체 코인 목록 조회 시작');
+  try{
+    const data=await fetchJson(API.EXCHANGE,'ExchangeInfo');
+    PRESETS.all=data.symbols.filter(s=>s.contractType==='PERPETUAL'&&s.status==='TRADING'&&s.quoteAsset==='USDT'&&s.symbol.endsWith('USDT')&&s.symbol!=='BTCDOMUSDT').map(s=>s.symbol);
+    const opt=document.querySelector('#preset option[value="all"]');
+    if(opt){opt.textContent=`전체 코인 (${PRESETS.all.length}개, 느림)`;opt.disabled=false;}
+    log(`전체 코인 ${PRESETS.all.length}개 로드 완료`);
+  }catch(e){
+    log(`전체 코인 로드 실패: ${e.message}`,true);
+    const opt=document.querySelector('#preset option[value="all"]');if(opt)opt.textContent='전체 코인 (로드 실패)';
+  }
+}
 
-    const detailedReasoningContainerDiv = document.getElementById('detailedReasoningContainer');
-    const expandAllBtn = document.getElementById('expandAll');
-    const collapseAllBtn = document.getElementById('collapseAll');
+const trendLabel=(s)=>s>=2?'상승':s<=-2?'하락':'횡보';
 
-      const runNowBtn = document.getElementById('runNow');
-      const scanBtnTop = document.getElementById('scanBtnTop');
+async function advancedTrend(sym,itv){
+  try{
+    const kl=await getKlines(sym,itv,LIMIT),cl=kl.map(k=>+k[4]),last=cl.at(-1);
+    const e20=ema(cl,20),e50=ema(cl,50),e200=ema(cl,200),d=dmiAdx(kl,14),r=rsiSeries(cl,14).at(-1)??null,m=macd(cl),st=supertrend(kl,10,3),cp=chop(kl,14),str=structureFromRecent(cl);
+    let s=0;
+    s+=last>e50?1:-1;s+=e50>e200?1:-1;
+    if(st?.trend==='UP')s+=1;else if(st?.trend==='DOWN')s-=1;
+    if(d?.adx>=22&&d.pdi>d.mdi)s+=1;if(d?.adx>=22&&d.pdi<d.mdi)s-=1;
+    if(m?.hist>0)s+=1;else if(m?.hist<0)s-=1;
+    if(r!==null&&r>55)s+=1;if(r!==null&&r<45)s-=1;
+    if(str==='BULL')s+=1;if(str==='BEAR')s-=1;
+    if(cp!==null&&cp<48)s+=.5;if(cp!==null&&cp>61)s-=.5;
+    const chg=((last-cl[0])/cl[0])*100,th=TREND_TH[itv]??.5;if(Math.abs(chg)>th*2)s+=chg>0?.5:-.5;
+    return{symbol:sym,interval:itv,trend:trendLabel(s),score:s,error:false,klines:kl,reason:`EMA20/50/200 ${fix(e20,2)}/${fix(e50,2)}/${fix(e200,2)} | ADX/PDI/MDI ${fix(d?.adx,1)}/${fix(d?.pdi,1)}/${fix(d?.mdi,1)} | MACD ${fix(m?.hist,4)} | RSI ${fix(r,1)} | ST ${st?.trend||'-'} | Chop ${fix(cp,1)} | 구조 ${str}`};
+  }catch(e){log(`${sym} ${itv} 추세 분석 실패: ${e.message}`,true);return{symbol:sym,interval:itv,trend:'오류',score:0,error:true,reason:'데이터 오류'};}
+}
 
-      const acctBalanceInput = document.getElementById('acctBalance');
-      const riskPctInput = document.getElementById('riskPct');
-      const atrSLInput = document.getElementById('atrSL');
-      const maxScanSymbolsInput = document.getElementById('maxScanSymbols');
-      const includeBTCInput = document.getElementById('includeBTC');
+function determineAltDirection(btc,dom){
+  if(!btc||!dom||btc.error||dom.error)return'분석 불가';
+  if(btc.trend==='상승'&&dom.trend==='하락')return'알트 강세 가능성 높음';
+  if(btc.trend==='상승'&&dom.trend==='상승')return'비트 주도장, 알트 선별 대응';
+  if(btc.trend==='하락'&&dom.trend==='상승')return'알트 하방 리스크 큼';
+  if(btc.trend==='하락'&&dom.trend==='하락')return'전반 약세, 관망 우선';
+  if(btc.trend==='횡보'&&dom.trend==='하락')return'개별 알트 순환매 가능';
+  if(btc.trend==='횡보'&&dom.trend==='상승')return'알트 자금 유출 압력';
+  return'혼조 구간, 보수적 단기 대응';
+}
 
-      const chartHeightRange = document.getElementById('chartHeightRange');
-      const chartHeightVal = document.getElementById('chartHeightVal');
+function altFavorability(map){
+  const m={'알트 강세 가능성 높음':1,'개별 알트 순환매 가능':.5,'비트 주도장, 알트 선별 대응':.2,'혼조 구간, 보수적 단기 대응':0,'알트 자금 유출 압력':-.4,'전반 약세, 관망 우선':-.7,'알트 하방 리스크 큼':-1};
+  let n=0,d=0;for(const tf of INTERVALS){const a=map[tf];if(!a)continue;const w=TF_WEIGHT[tf]||1;n+=(m[a.altPrediction]??0)*w;d+=w;}return d===0?0:clamp(n/d,-1,1);
+}
 
-      const lastAnalyzedAt = document.getElementById('lastAnalyzedAt');
+function generateStrategy(map,regime,fav,atrp){
+  let up=0,dn=0,flat=0,dup=0,ddn=0,v=0;
+  for(const tf of INTERVALS){const a=map[tf];if(!a||a.btc.error||a.dom.error)continue;v++;if(a.btc.trend==='상승')up++;else if(a.btc.trend==='하락')dn++;else flat++;if(a.dom.trend==='상승')dup++;if(a.dom.trend==='하락')ddn++;}
+  if(v<3)return'유효 시간대 데이터가 부족합니다.';
+  const m=Math.ceil(v/2),bb=up>=m?'상승':dn>=m?'하락':'횡보',db=dup>=m?'상승':ddn>=m?'하락':'횡보';
+  const out=[`BTC 주축 ${bb}, DOM 주축 ${db}, 레짐 ${regime}.`,`알트 우호도 ${fav.toFixed(2)}, BTC 1D ATR% ${fix(atrp,2)}.`];
+  if(bb==='상승'&&db==='하락')out.push('전략: 1h/4h 정렬 종목의 눌림목 매수 우선.');
+  else if(bb==='상승'&&db==='상승')out.push('전략: 비트 주도장, 알트는 점수 상위만 선별 진입.');
+  else if(bb==='하락'&&db==='상승')out.push('전략: 현금/헤지 비중 확대, 무리한 역추세 매수 제한.');
+  else if(bb==='횡보')out.push('전략: 박스 순환매, 브레이크아웃은 RVOL 확인 후 추종.');
+  else out.push('전략: 포지션 축소, 손실 제한 우선.');
+  if(Math.abs(fav)<.15)out.push('신호 혼조 구간으로 트레이드 빈도 축소 권장.');
+  return out.join(' ');
+}
 
-      const altTableBody = document.getElementById('altTableBody');
-      const sortScoreBtn = document.getElementById('sortScore');
-      const sortMajorsBtn = document.getElementById('sortMajors');
-      const sortCoreBtn = document.getElementById('sortCore');
-      const sortMemeBtn = document.getElementById('sortMeme');
+function gating(f){return{long:clamp(1+f*.22,.62,1.25),short:clamp(1-f*.22,.62,1.25)};}
+function noTradeFlags(m,side){const f=[];if(m.adx!==null&&m.chop!==null&&m.adx<17&&m.chop>60)f.push('추세 약함');if(m.rvol<.9)f.push('거래량 부족');if(m.atrPct!==null&&m.atrPct>9)f.push('변동성 과열');if(side==='LONG'&&m.stochK>92)f.push('단기 과열');if(side==='SHORT'&&m.stochK<8)f.push('단기 과매도');return f;}
 
-      let scanRows = [];
-      let currentSort = 'score';
+function scoreSide(m,side,gate){
+  const b={trend:0,momentum:0,vol:0,part:0,entry:0,risk:0};
+  if(side==='LONG'){if(m.price>m.ema50)b.trend+=6;if(m.ema20>m.ema50)b.trend+=6;if(m.ema50>m.ema200)b.trend+=6;if(m.supertrend==='UP')b.trend+=6;if(m.adx>=22&&m.pdi>m.mdi)b.trend+=6;if(m.structure==='BULL')b.trend+=4;}
+  else{if(m.price<m.ema50)b.trend+=6;if(m.ema20<m.ema50)b.trend+=6;if(m.ema50<m.ema200)b.trend+=6;if(m.supertrend==='DOWN')b.trend+=6;if(m.adx>=22&&m.pdi<m.mdi)b.trend+=6;if(m.structure==='BEAR')b.trend+=4;}
+  b.trend=clamp(b.trend,0,30);
+  if(side==='LONG'){if(m.macdHist>0)b.momentum+=8;if(m.macdSlope>0)b.momentum+=6;if(m.stochK>m.stochD&&m.stochK>45&&m.stochK<90)b.momentum+=6;}
+  else{if(m.macdHist<0)b.momentum+=8;if(m.macdSlope<0)b.momentum+=6;if(m.stochK<m.stochD&&m.stochK<55&&m.stochK>10)b.momentum+=6;}
+  b.momentum=clamp(b.momentum,0,20);
+  if(m.squeezeOn)b.vol+=5;if(m.squeezeFire)b.vol+=7;if(m.chop!==null&&m.chop<50)b.vol+=3;b.vol=clamp(b.vol,0,15);
+  if(m.rvol>=2)b.part+=10;else if(m.rvol>=1.5)b.part+=8;else if(m.rvol>=1.2)b.part+=5;if(side==='LONG'&&m.volDelta>0)b.part+=5;if(side==='SHORT'&&m.volDelta<0)b.part+=5;b.part=clamp(b.part,0,15);
+  if(m.distEma20Atr!==null){if(m.distEma20Atr<=.25)b.entry+=7;else if(m.distEma20Atr<=.5)b.entry+=5;else if(m.distEma20Atr<=.9)b.entry+=2;}if(side==='LONG'&&m.donPos!==null&&m.donPos>.58)b.entry+=3;if(side==='SHORT'&&m.donPos!==null&&m.donPos<.42)b.entry+=3;b.entry=clamp(b.entry,0,10);
+  if(m.atrPct!==null){if(m.atrPct>=.8&&m.atrPct<=4.8)b.risk+=6;else if(m.atrPct<=7)b.risk+=3;}if(side==='LONG'&&m.vwapDev>-1.2&&m.vwapDev<4.2)b.risk+=4;if(side==='SHORT'&&m.vwapDev<1.2&&m.vwapDev>-4.2)b.risk+=4;b.risk=clamp(b.risk,0,10);
+  const score=clamp((b.trend+b.momentum+b.vol+b.part+b.entry+b.risk)*gate,0,100);
+  return{score,breakdown:b};
+}
 
-    const sidebar = document.getElementById('sidebar');
-    const sidebarBackdrop = document.getElementById('sidebarBackdrop');
-    const menuBtn = document.getElementById('menuBtn');
+const confidence=(s,c,flags)=>clamp((s*.62+c*.38)-flags.length*6,0,100);
+function positionSizing(balance,riskPct,atrv,slm,price,atrPct){if(!atrv||!price||atrv<=0)return{qty:null,lev:null};const riskDollar=balance*(riskPct/100),stop=atrv*slm,qty=riskDollar/stop,notional=qty*price,base=balance>0?notional/balance:null,cap=atrPct?clamp(10/atrPct,1,8):5;return{qty,lev:base?clamp(Math.min(base,cap),1,20):null};}
 
-    // ==============================
-    // Utils
-    // ==============================
-    function addApiLog(message,isError=false){
-      apiLogContainerDiv.classList.remove('hidden');
-      const el = document.createElement('div');
-      el.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-      el.className = 'log-entry ' + (isError?'log-error':'log-success');
-      apiLogEntriesDiv.appendChild(el);
-      apiLogEntriesDiv.scrollTop = apiLogEntriesDiv.scrollHeight;
-    }
-    function clearApiLogs(){ apiLogEntriesDiv.innerHTML='';}
-    function showError(msg){ errorMessageDiv.textContent=msg; errorMessageDiv.classList.remove('hidden');}
-    function clearError(){ errorMessageDiv.textContent=''; errorMessageDiv.classList.add('hidden');}
-    function fmt(n, d=2){ if(n===null||n===undefined||isNaN(n)) return '-'; return Number(n).toLocaleString(undefined,{maximumFractionDigits:d});}
-    function pct(a, d=2){ if(a===null||a===undefined||isNaN(a)) return '-'; return (a>=0?'+':'')+Number(a).toFixed(d)+'%';}
-    function sleep(ms){ return new Promise(r=>setTimeout(r,ms));}
-    function clamp(v,min,max){ return Math.max(min,Math.min(max,v));}
-    function quantile(arr,q){ if(!arr?.length)return null; const a=[...arr].sort((x,y)=>x-y); const pos=(a.length-1)*q; const base=Math.floor(pos); const rest=pos-base; return a[base+1]!==undefined? a[base]+rest*(a[base+1]-a[base]) : a[base];}
+function tradePlan(m,side,slm){const entry=m.price;if(!m.atr||m.atr<=0)return{entry,sl:null,tp1:null,tp2:null,rr:null};let sl;if(side==='LONG'){const byAtr=entry-m.atr*slm,byStruct=m.donLower!==null?m.donLower-m.atr*.15:byAtr;sl=Math.min(byAtr,byStruct);}else{const byAtr=entry+m.atr*slm,byStruct=m.donUpper!==null?m.donUpper+m.atr*.15:byAtr;sl=Math.max(byAtr,byStruct);}const risk=Math.abs(entry-sl),tp1=side==='LONG'?entry+risk*1.5:entry-risk*1.5,tp2=side==='LONG'?entry+risk*2.4:entry-risk*2.4,rr=risk>0?Math.abs(tp1-entry)/risk:null;return{entry,sl,tp1,tp2,rr};}
 
-    async function fetchJson(url, tag=''){
-      addApiLog(`GET ${url}`);
-      let res;
-      try{
-        res = await fetch(url);
-      }catch(e){
-        addApiLog(`${tag||'API'} 네트워크 오류: ${e.message}`, true);
-        throw e;
-      }
-      if(!res.ok){
-        const t = await res.text().catch(()=> '');
-        addApiLog(`${tag||'API'} Error ${res.status}: ${t.slice(0,120)}`, true);
-        throw new Error(`${tag||'API'} ${res.status}`);
-      }
-      return await res.json();
-    }
+function decideSide(m){const L=(m.price>m.ema50?1:0)+(m.ema20>m.ema50?1:0)+(m.supertrend==='UP'?1:0)+(m.macdHist>0?1:0)+(m.pdi>m.mdi?1:0);const S=(m.price<m.ema50?1:0)+(m.ema20<m.ema50?1:0)+(m.supertrend==='DOWN'?1:0)+(m.macdHist<0?1:0)+(m.pdi<m.mdi?1:0);return L>=S?'LONG':'SHORT';}
 
-    // ==============================
-    // Indicators
-    // ==============================
-    function sma(arr, p){ if(arr.length<p) return null; let s=0; for(let i=arr.length-p;i<arr.length;i++) s+=arr[i]; return s/p;}
-    function ema(arr, p){
-      if(arr.length<p) return null;
-      const k = 2/(p+1);
-      let prev = sma(arr.slice(0,p), p);
-      for(let i=p;i<arr.length;i++){ prev = arr[i]*k + prev*(1-k);}
-      return prev;
-    }
-    function emaSeries(arr,p){
-      if(arr.length<p) return [];
-      const k=2/(p+1), out=[];
-      let prev = sma(arr.slice(0,p), p);
-      out[p-1]=prev;
-      for(let i=p;i<arr.length;i++){ prev = arr[i]*k + prev*(1-k); out[i]=prev;}
-      return out;
-    }
-    function macd(closes, fast=EMA_FAST, slow=EMA_SLOW, signal=MACD_SIGNAL){
-      if(closes.length<slow+signal) return null;
-      const emaF = emaSeries(closes, fast);
-      const emaS = emaSeries(closes, slow);
-      const macdLine = [];
-      for(let i=0;i<closes.length;i++){
-        if(emaF[i]!==undefined && emaS[i]!==undefined) macdLine[i]= emaF[i]-emaS[i];
-      }
-      const valid = macdLine.filter(v=>v!==undefined);
-      const sigSeries = emaSeries(valid, signal);
-      const li = macdLine.length-1;
-      const si = sigSeries.length-1;
-      const signalVal = sigSeries[si];
-      const hist = macdLine[li]-signalVal;
-      const prevHist = (macdLine[li-1]!==undefined && sigSeries[si-1]!==undefined) ? macdLine[li-1]-sigSeries[si-1] : null;
-      return {macd:macdLine[li], signal:signalVal, hist, prevHist};
-    }
-    function trueRange(h,l,cPrev){ return Math.max(h-l, Math.abs(h-cPrev), Math.abs(l-cPrev)); }
-    function atrFromKlines(klines, period=ATR_PERIOD){
-      if(!klines || klines.length<period+1) return null;
-      const trs = [];
-      for(let i=1;i<klines.length;i++){
-        const h=parseFloat(klines[i][2]), l=parseFloat(klines[i][3]), cPrev=parseFloat(klines[i-1][4]);
-        trs.push(trueRange(h,l,cPrev));
-      }
-      // Wilder smoothing
-      let atr = 0;
-      for(let i=0;i<period;i++) atr += trs[i];
-      atr /= period;
-      for(let i=period;i<trs.length;i++) atr = (atr*(period-1) + trs[i]) / period;
-      return atr;
-    }
-    // DMI(+DI/-DI) + ADX 동시 계산 (마지막 값 반환)
-    function dmiAdxFull(klines, period=DMI_PERIOD){
-      if(!klines || klines.length<period+2) return null;
-      const highs = klines.map(k=>parseFloat(k[2]));
-      const lows  = klines.map(k=>parseFloat(k[3]));
-      const closes= klines.map(k=>parseFloat(k[4]));
-      const TR=[], plusDM=[], minusDM=[];
-      for(let i=1;i<closes.length;i++){
-        const upMove = highs[i]-highs[i-1];
-        const downMove = lows[i-1]-lows[i];
-        plusDM.push((upMove>downMove && upMove>0)? upMove:0);
-        minusDM.push((downMove>upMove && downMove>0)? downMove:0);
-        TR.push(trueRange(highs[i], lows[i], closes[i-1]));
-      }
-      // 초기 Wilder smoothing 구간
-      let TRn=0, pDMn=0, mDMn=0;
-      for(let i=0;i<period;i++){ TRn+=TR[i]; pDMn+=plusDM[i]; mDMn+=minusDM[i];}
-      let pDI = 100*(pDMn/TRn);
-      let mDI = 100*(mDMn/TRn);
-      const DX=[];
-      DX.push(100*Math.abs(pDI-mDI)/(pDI+mDI));
-      for(let i=period;i<TR.length;i++){
-        TRn = TRn - (TRn/period) + TR[i];
-        pDMn= pDMn - (pDMn/period) + plusDM[i];
-        mDMn= mDMn - (mDMn/period) + minusDM[i];
-        pDI = 100*(pDMn/TRn);
-        mDI = 100*(mDMn/TRn);
-        const dx = 100*Math.abs(pDI-mDI)/(pDI+mDI);
-        DX.push(dx);
-      }
-      // ADX 계산
-      let adx = null;
-      if(DX.length>=period){
-        adx = DX.slice(0,period).reduce((a,b)=>a+b,0)/period;
-        for(let i=period;i<DX.length;i++) adx = (adx*(period-1)+DX[i])/period;
-      } else {
-        adx = DX.reduce((a,b)=>a+b,0)/DX.length;
-      }
-      return {adx, pdi:pDI, mdi:mDI};
-    }
-    function bollinger(closes, period=BB_PERIOD, mult=BB_MULT){
-      if(closes.length<period) return null;
-      const slice = closes.slice(-period);
-      const mean = slice.reduce((a,b)=>a+b,0)/period;
-      const variance = slice.reduce((a,b)=>a+(b-mean)*(b-mean),0)/period;
-      const sd = Math.sqrt(variance);
-      return {mid:mean, upper:mean+mult*sd, lower:mean-mult*sd, width:(2*mult*sd), bwRatio:(2*mult*sd)/mean};
-    }
-    function rsiSeries(closes, period=RSI_PERIOD){
-      if(closes.length<period+1) return [];
-      const changes = [];
-      for(let i=1;i<closes.length;i++) changes.push(closes[i]-closes[i-1]);
-      let gain=0, loss=0;
-      for(let i=0;i<period;i++){ if(changes[i]>0) gain+=changes[i]; else loss+=Math.abs(changes[i]);}
-      let avgGain=gain/period, avgLoss=loss/period;
-      const out=[];
-      out.push(avgLoss===0?100:(100-100/(1+avgGain/avgLoss)));
-      for(let i=period;i<changes.length;i++){
-        const ch=changes[i], g=ch>0?ch:0, l=ch<0?Math.abs(ch):0;
-        avgGain=(avgGain*(period-1)+g)/period;
-        avgLoss=(avgLoss*(period-1)+l)/period;
-        out.push(avgLoss===0?100:(100-100/(1+avgGain/avgLoss)));
-      }
-      return out;
+function confluence(rows){
+  const map=new Map();for(const r of rows){if(!map.has(r.symbol))map.set(r.symbol,[]);map.get(r.symbol).push(r);}const out=new Map();
+  for(const [sym,arr] of map.entries()){
+    let l=0,s=0,t=0;for(const r of arr){const w=ALT_TF_WEIGHT[r.interval]||1;t+=w;if(r.side==='LONG')l+=w;else s+=w;}
+    const dom=l>=s?'LONG':'SHORT',align=t>0?Math.max(l,s)/t:0,cover=arr.length/ALT_INTERVALS.length;out.set(sym,{dom,score:clamp(align*70+cover*30,0,100)});
+  }
+  return out;
+}
+
+function fundingRisk(row){if(row.fundingRaw===null)return;if(row.side==='LONG'&&row.fundingRaw>.06)row.flags.push('롱 펀딩 과열');if(row.side==='SHORT'&&row.fundingRaw<-.06)row.flags.push('숏 펀딩 과열');}
+
+const trendClass=(t)=>t.includes('상승')?'up':t.includes('하락')?'dn':'flat';
+async function analyzeAltInterval(symbol,interval){
+  try{
+    const kl=await getKlines(symbol,interval,LIMIT),cl=kl.map(k=>+k[4]),vol=kl.map(k=>+k[5]);
+    if(cl.length<210)return null;
+    const price=cl.at(-1),ema20=ema(cl,20),ema50=ema(cl,50),ema200=ema(cl,200);
+    if([ema20,ema50,ema200].some(v=>v===null))return null;
+    const atrv=atr(kl,14),atrPct=atrv&&price>0?(atrv/price*100):null,d=dmiAdx(kl,14),m=macd(cl),stoch=stochRsi(cl)||{k:50,d:50},sq=squeezeState(kl),cp=chop(kl,14),st=supertrend(kl,10,3),vw=rollingVwap(kl,120),vdev=vw&&vw>0?((price-vw)/vw*100):0,don=donchian(kl,20),dr=don?(don.upper-don.lower):null,donPos=don&&dr&&dr>0?((price-don.lower)/dr):null,str=structureFromRecent(cl),rv=(()=>{const vma=sma(vol,20);return(!vma||vma<=0)?1:vol.at(-1)/vma;})(),vd=volDelta(kl,20),dist=atrv&&ema20?Math.abs(price-ema20)/atrv:null;
+    return{symbol,interval,metrics:{price,ema20,ema50,ema200,atr:atrv,atrPct,adx:d?.adx??null,pdi:d?.pdi??null,mdi:d?.mdi??null,macdHist:m?.hist??0,macdSlope:(m?.hist!==undefined&&m?.prevHist!==undefined)?m.hist-m.prevHist:0,stochK:stoch.k??50,stochD:stoch.d??50,squeezeOn:sq.on,squeezeFire:sq.fire,chop:cp,supertrend:st?.trend??'FLAT',vwapDev:vdev,donUpper:don?.upper??null,donLower:don?.lower??null,donPos,structure:str,rvol:rv,volDelta:vd,distEma20Atr:dist}};
+  }catch(e){log(`알트 분석 실패 ${symbol} ${interval}: ${e.message}`,true);return null;}
+}
+
+function renderCurrent(btc,dom,analyzedAt){el.current.innerHTML=`<div class="kv"><span class="small">BTCUSDT</span><span><b>${fmt(btc,2)}</b></span></div><div class="kv"><span class="small">BTCDOMUSDT</span><span><b>${fmt(dom,2)}</b></span></div>`;el.analysisTime.textContent=`최근 분석 시각: ${analyzedAt}`;}
+function renderRegime(regime,fav,atrp,adx,cp){const cls=regime.includes('추세')?'pill pill-up':regime.includes('전환')?'pill pill-md':'pill pill-dn';el.regime.innerHTML=`<div class="kv"><span class="small">레짐</span><span class="${cls}">${regime}</span></div><div class="kv"><span class="small">알트 우호도</span><span>${fav.toFixed(2)}</span></div><div class="kv"><span class="small">BTC 1D ATR%</span><span>${fix(atrp,2)}%</span></div><div class="kv"><span class="small">BTC 4H ADX</span><span>${fix(adx,1)}</span></div><div class="kv"><span class="small">BTC 4H Choppiness</span><span>${fix(cp,1)}</span></div>`;}
+function renderAlerts(arr){el.alerts.innerHTML='';if(!arr.length){const li=document.createElement('li');li.textContent='특별 경고 없음. 기본 리스크 관리 유지';li.classList.add('text-emerald-300');el.alerts.appendChild(li);return;}arr.forEach(a=>{const li=document.createElement('li');li.textContent=a;el.alerts.appendChild(li);});}
+function reasonCard(tf,a){const d=document.createElement('div');d.className='reason';d.innerHTML=`<h3 class="text-base mb-2">${tf} 분석 근거 <span class="small">(${a.altPrediction})</span></h3><div class="text-sm"><p><b>BTC</b> [${a.btc.trend}, score ${fix(a.btc.score,1)}] ${a.btc.reason}</p><p class="mt-1"><b>DOM</b> [${a.dom.trend}, score ${fix(a.dom.score,1)}] ${a.dom.reason}</p></div>`;el.reasonWrap.appendChild(d);}
+
+function mountTradingViewWidget(containerId,symbol="BINANCE:BTCUSDT",interval="60"){
+  const c=document.getElementById(containerId);if(!c)return;c.innerHTML='';
+  const s=document.createElement('script');s.type='text/javascript';s.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';s.async=true;
+  s.innerHTML=JSON.stringify({width:"100%",height:"100%",symbol,interval,timezone:"Etc/UTC",theme:"dark",style:"1",locale:"ko",allow_symbol_change:true,support_host:"https://www.tradingview.com"});
+  c.appendChild(s);
+}
+function renderTradingViewWidget(symbol="BINANCE:BTCUSDT",interval="60"){mountTradingViewWidget('tradingview-widget-container-inner',symbol,interval);}
+function renderDominanceWidget(symbol="CRYPTOCAP:BTC.D",interval="60"){mountTradingViewWidget('tradingview-widget-container-dominance-inner',symbol,interval);}
+const tvInterval=(i)=>({"5m":"5","15m":"15","1h":"60","4h":"240","1d":"D"}[i]||"60");
+
+async function performAnalysis(){
+  clearError();clearLog();el.loading.classList.remove('hidden');
+  el.strategyWrap.classList.add('hidden');el.summaryWrap.classList.add('hidden');el.summaryBody.innerHTML='';el.reasonWrap.innerHTML='';el.altBody.innerHTML='<tr><td colspan="22" class="py-4">분석 중...</td></tr>';
+
+  const BAL=+el.balance.value||10000,RISK=clamp(+el.risk.value||1,.1,5),SLM=clamp(+el.atrSL.value||1.6,.5,4),TOPN=clamp(parseInt(el.topN.value,10)||10,3,25);
+  let symbols=PRESETS.core;
+  if(el.preset.value==='all'){symbols=PRESETS.all;if(!symbols||!symbols.length){showError('전체 코인 목록이 비어 있습니다. 잠시 후 다시 시도하세요.');el.loading.classList.add('hidden');return;}}
+  else if(el.preset.value==='custom'){const t=(el.custom.value||'').trim();symbols=t?t.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean):PRESETS.core;}
+  else symbols=PRESETS[el.preset.value]||PRESETS.core;
+
+  try{
+    const analyzedAt=new Date().toLocaleString('ko-KR');const [btcP,domP]=await Promise.all([getTicker('BTCUSDT'),getTicker('BTCDOMUSDT')]);renderCurrent(btcP,domP,analyzedAt);
+    const jobs=[];for(const tf of INTERVALS){jobs.push(advancedTrend('BTCUSDT',tf));jobs.push(advancedTrend('BTCDOMUSDT',tf));}
+    const trs=await Promise.all(jobs),byTf={};
+    for(const r of trs){if(!byTf[r.interval])byTf[r.interval]={interval:r.interval};if(r.symbol==='BTCUSDT')byTf[r.interval].btc=r;else byTf[r.interval].dom=r;}
+    for(const tf of INTERVALS){const a=byTf[tf];if(!a||!a.btc||!a.dom)continue;a.altPrediction=determineAltDirection(a.btc,a.dom);}
+
+    const k1d=byTf['1d']?.btc?.klines||await getKlines('BTCUSDT','1d',LIMIT),k4h=byTf['4h']?.btc?.klines||await getKlines('BTCUSDT','4h',LIMIT),a1d=atr(k1d,14),last1d=k1d?.length?+k1d.at(-1)[4]:null,atrPct1d=a1d&&last1d?(a1d/last1d*100):null,d4=dmiAdx(k4h,14),cp4=chop(k4h,14);
+    let regime='전환 구간';if(d4?.adx>=25&&cp4!==null&&cp4<52)regime='추세 장세';else if(d4?.adx<18&&cp4!==null&&cp4>58)regime='레인지 장세';
+    const fav=altFavorability(byTf);renderRegime(regime,fav,atrPct1d,d4?.adx,cp4);
+
+    el.strategy.textContent=generateStrategy(byTf,regime,fav,atrPct1d);el.strategyWrap.classList.remove('hidden');
+    const alerts=[];if(atrPct1d!==null&&atrPct1d>=6)alerts.push('BTC 1D ATR% 6% 이상: 포지션 축소 권장.');if(d4?.adx!==null&&d4.adx>=35)alerts.push('BTC 4H ADX 높음: 추세 추종 + 후행손절 유리.');if(cp4!==null&&cp4>62)alerts.push('비효율 구간: 신호 빈도보다 품질 우선.');renderAlerts(alerts);
+
+    el.summaryTitle.textContent=`시간대별 요약 (분석 시각: ${analyzedAt})`;
+    let has=false;for(const tf of INTERVALS){const a=byTf[tf];if(!a||!a.btc||!a.dom)continue;const tr=document.createElement('tr');tr.innerHTML=`<td>${tf}</td><td class="${trendClass(a.btc.trend)}">${a.btc.trend}</td><td class="${trendClass(a.dom.trend)}">${a.dom.trend}</td><td>${a.altPrediction||'-'}</td><td>${fix(a.btc.score,1)}</td><td>${fix(a.dom.score,1)}</td>`;el.summaryBody.appendChild(tr);reasonCard(tf,a);has=true;}
+    if(has)el.summaryWrap.classList.remove('hidden');
+
+    const gt=gating(fav),targets=[];for(const s of symbols)for(const tf of ALT_INTERVALS)targets.push({symbol:s,interval:tf});
+    const raw=await mapLimit(targets,12,(t)=>analyzeAltInterval(t.symbol,t.interval));
+    const rows=[];
+    for(const r of raw){
+      if(!r)continue;const sideProbe=decideSide(r.metrics),L=scoreSide(r.metrics,'LONG',gt.long),S=scoreSide(r.metrics,'SHORT',gt.short),side=sideProbe==='LONG'?(L.score>=S.score?'LONG':'SHORT'):(S.score>=L.score?'SHORT':'LONG'),pack=side==='LONG'?L:S,flags=noTradeFlags(r.metrics,side);
+      if(pack.score<52)continue;
+      const tp=tradePlan(r.metrics,side,SLM),sz=positionSizing(BAL,RISK,r.metrics.atr,SLM,r.metrics.price,r.metrics.atrPct);
+      rows.push({symbol:r.symbol,interval:r.interval,side,score:pack.score,breakdown:pack.breakdown,metrics:r.metrics,flags,...tp,qty:sz.qty,lev:sz.lev});
     }
 
-    // ==============================
-    // 간단 추세 분석 (BTC/DOM)
-    // ==============================
-    function calculateSMA(data,p){ if(!data||data.length<p) return null; const r=data.slice(data.length-p); return r.reduce((a,v)=>a+v,0)/p;}
-    function getPeaks(series){ const peaks=[]; if(series.length<3) return peaks; for(let i=1;i<series.length-1;i++){ if(series[i]>series[i-1] && series[i]>series[i+1]) peaks.push({index:i,value:series[i]});} return peaks;}
-    function getTroughs(series){ const troughs=[]; if(series.length<3) return troughs; for(let i=1;i<series.length-1;i++){ if(series[i]<series[i-1] && series[i]<series[i+1]) troughs.push({index:i,value:series[i]});} return troughs;}
+    const conf=confluence(rows);
+    for(const r of rows){const c=conf.get(r.symbol)||{dom:r.side,score:50};r.confluence=c.score;r.confidence=confidence(r.score,r.confluence,r.flags);if(c.dom!==r.side)r.flags.push('상위 TF 비정렬');}
+    rows.sort((a,b)=>((b.confidence??0)-(a.confidence??0))||((b.score??0)-(a.score??0)));
+    const top=rows.slice(0,TOPN),uniq=[...new Set(top.map(r=>r.symbol))],meta={};
+    for(const s of uniq){const [f,oi]=await Promise.all([getFunding(s),getOI(s)]);meta[s]={f,oi};await sleep(20);}  
+    for(const r of top){const m=meta[r.symbol]||{};r.fundingRaw=m.f??null;r.funding=m.f===null||m.f===undefined?'-':`${m.f.toFixed(3)}%`;r.oi=m.oi===null||m.oi===undefined?'-':fmt(m.oi,0);fundingRisk(r);r.confidence=confidence(r.score,r.confluence,r.flags);} 
 
-    async function getTicker(symbol){ try{ const j=await fetchJson(`${TICKER_API_URL}?symbol=${symbol}`,'ticker'); return parseFloat(j.lastPrice);}catch(e){ addApiLog(`${symbol} ticker 실패`,true); return null; } }
-    async function getKlines(symbol, interval, limit=KLINE_LIMIT){ return await fetchJson(`${KLINE_API_URL}?symbol=${symbol}&interval=${interval}&limit=${limit}`, 'klines');}
-    async function getFunding(symbol){ try{ const j=await fetchJson(`${FUNDING_API_URL}?symbol=${symbol}&limit=1`,'funding'); return (Array.isArray(j)&&j.length)? parseFloat(j[0].fundingRate)*100 : null;}catch(_){return null;} }
-    async function getOI(symbol){ try{ const j=await fetchJson(`${OI_API_URL}?symbol=${symbol}`,'openInterest'); return parseFloat(j.openInterest);}catch(_){return null;} }
+    el.altBody.innerHTML='';
+    if(!top.length)el.altBody.innerHTML='<tr><td colspan="22" class="py-4">현재 조건을 만족하는 후보가 없습니다. 필터 완화 또는 심볼 변경을 시도하세요.</td></tr>';
+    else top.forEach((r,i)=>{const cls=r.side==='LONG'?'up':'dn',sq=r.metrics.squeezeFire?'Fire':(r.metrics.squeezeOn?'On':'-'),stoch=`${fix(r.metrics.stochK,1)}/${fix(r.metrics.stochD,1)}`,flags=r.flags.length?r.flags.join(', '):'-',rr=r.rr!==null?fix(r.rr,2):'-';const tr=document.createElement('tr');tr.innerHTML=`<td>${i+1}</td><td><a href="#" class="chart-link" data-symbol="BINANCE:${r.symbol}" data-interval="${r.interval}">${r.symbol}</a></td><td>${r.interval}</td><td class="${cls}">${r.side}</td><td><b>${fix(r.score,0)}</b></td><td>${fix(r.confluence,0)}</td><td>${fix(r.confidence,0)}</td><td>${fmt(r.metrics.price,4)}</td><td>${fix(r.metrics.atrPct,2)}%</td><td>${fix(r.metrics.adx,1)}</td><td>${stoch}</td><td>${sq}</td><td>${fmt(r.entry,4)}</td><td>${fmt(r.sl,4)}</td><td>${fmt(r.tp1,4)}</td><td>${fmt(r.tp2,4)}</td><td>${rr}</td><td>${r.qty?fmt(r.qty,4):'-'}</td><td>${r.lev?`${fix(r.lev,2)}x`:'-'}</td><td>${r.funding}</td><td>${r.oi}</td><td class="small">${flags}</td>`;el.altBody.appendChild(tr);});
 
-    async function simpleTrend(symbol, interval){
-      try{
-        const k = await getKlines(symbol, interval, KLINE_LIMIT);
-        const closes = k.map(x=>parseFloat(x[4]));
-        const cnt = closes.length;
-        let trend="횡보 (Sideways)", parts=[];
-        const smaS = calculateSMA(closes, SMA_SHORT_PERIOD);
-        const smaL = calculateSMA(closes, SMA_LONG_PERIOD);
-        const last = closes[cnt-1];
-        if(smaS && smaL){
-          parts.push(`단기SMA(${SMA_SHORT_PERIOD}): ${smaS.toFixed(4)}, 장기SMA(${SMA_LONG_PERIOD}): ${smaL.toFixed(4)}`);
-          if(last>smaL && smaS>smaL){ trend="상승 (Long)"; parts.push("현재가 및 단기SMA > 장기SMA");}
-          else if(last<smaL && smaS<smaL){ trend="하락 (Short)"; parts.push("현재가 및 단기SMA < 장기SMA");}
-          else parts.push("SMA 혼조/근접");
-        } else parts.push("SMA 데이터 부족");
-        const rsiS = rsiSeries(closes, RSI_PERIOD);
-        if(rsiS.length){ const r=rsiS[rsiS.length-1]; parts.push(`RSI(${RSI_PERIOD}): ${r.toFixed(1)}`);}
-        if(cnt>1){
-          const changePct = ((last - closes[0])/closes[0])*100;
-          const th = TREND_THRESHOLD_PERCENT[interval]||0.5;
-          if(changePct>th && trend==="횡보 (Sideways)") trend="상승 (Long)";
-          if(changePct<-th && trend==="횡보 (Sideways)") trend="하락 (Short)";
-          parts.push(`최근 ${cnt}캔들 ${changePct.toFixed(2)}%`);
-        }
-        return {interval,symbol,trend,reasoning:`분석 기준: ${parts.join('; ')}`,error:false, closes, klines:k};
-      }catch(e){
-        addApiLog(`${symbol} ${interval} trend 실패: ${e.message}`, true);
-        return {interval,symbol,trend:"데이터 오류",reasoning:"에러",error:true};
-      }
-    }
+  }catch(e){log(`파이프라인 오류: ${e.message}`,true);showError(`분석 중 오류가 발생했습니다: ${e.message}`);} finally{el.loading.classList.add('hidden');}
+}
 
-    function determineAltDirection(btcTrend, domTrend){
-      if(!btcTrend||!domTrend||btcTrend.includes("오류")||domTrend.includes("오류")) return "분석 불가 (데이터 오류)";
-      if(btcTrend.includes("상승")){
-        if(domTrend.includes("상승")) return "알트코인 완만한 상승세";
-        if(domTrend.includes("하락")) return "알트코인 단기 급등 기대";
-        return "알트코인 완만한 상승세 (비트 영향)";
-      } else if(btcTrend.includes("하락")){
-        if(domTrend.includes("상승")) return "알트코인 급락 위험";
-        if(domTrend.includes("하락")) return "알트코인 점진적 하락";
-        return "알트코인 점진적 하락 (비트 영향)";
-      } else {
-        if(domTrend.includes("상승")) return "알트코인 하락 압력";
-        if(domTrend.includes("하락")) return "알트코인 상승 기대";
-        return "알트코인 횡보 또는 개별 종목 장세";
-      }
-    }
-
-    function altFavorabilityScore(analysesByInterval){
-      const map = {
-        "알트코인 단기 급등 기대": +1.0,
-        "알트코인 상승 기대": +0.6,
-        "알트코인 완만한 상승세": +0.5,
-        "알트코인 완만한 상승세 (비트 영향)": +0.4,
-        "알트코인 횡보 또는 개별 종목 장세": 0.0,
-        "알트코인 하락 압력": -0.4,
-        "알트코인 점진적 하락": -0.5,
-        "알트코인 점진적 하락 (비트 영향)": -0.4,
-        "알트코인 급락 위험": -1.0
-      };
-      let num=0, den=0;
-      Object.keys(analysesByInterval).forEach(tf=>{
-        const a = analysesByInterval[tf];
-        if(a?.altPrediction){
-          const w = TIMEFRAME_WEIGHT[tf]||1;
-          const v = map[a.altPrediction] ?? 0;
-          num += v*w; den += w;
-        }
-      });
-      if(den===0) return 0;
-      return clamp(num/den, -1, +1);
-    }
-
-    // ✅ 누락되었던 함수 복구: 종합 전략 생성
-    function generateOverallTradingStrategy(analysesByInterval){
-      let btcLong=0, btcShort=0, btcSide=0, domLong=0, domShort=0, domSide=0, valid=0;
-      INTERVALS_TO_ANALYZE.forEach(tf=>{
-        const a=analysesByInterval[tf];
-        if(a?.btcTrendData && !a.btcTrendData.error && a?.domTrendData && !a.domTrendData.error){
-          valid++;
-          const bt=a.btcTrendData.trend, dm=a.domTrendData.trend;
-          if(bt.includes("상승")) btcLong++; else if(bt.includes("하락")) btcShort++; else btcSide++;
-          if(dm.includes("상승")) domLong++; else if(dm.includes("하락")) domShort++; else domSide++;
-        }
-      });
-      if(valid<3) return "분석 가능한 시간대 데이터가 부족합니다. 개별 분석 참고.";
-
-      const maj = Math.ceil(valid/2);
-      let dBT="혼조", dDM="혼조";
-      if(btcLong>=maj) dBT="상승"; else if(btcShort>=maj) dBT="하락"; else if(btcSide>=maj) dBT="횡보";
-      if(domLong>=maj) dDM="상승"; else if(domShort>=maj) dDM="하락"; else if(domSide>=maj) dDM="횡보";
-
-      let msg="";
-      if(dBT==="상승"){
-        if(dDM==="하락") msg="전반적 강세장. 비트 상승 + 도미넌스 하락 → 알트 유동성 유입. 선별 매수·보유 전략이 유효. 🟢";
-        else if(dDM==="상승") msg="비트 주도 상승장. 알트는 상대적 약세/추종. 비중 조절 및 선별 접근. 🟡";
-        else msg="비트 상승세 우세. 도미넌스 방향에 따라 알트 변동성 확대. 위험관리 동반 선별 매수. 🟢🟡";
-      } else if(dBT==="하락"){
-        if(dDM==="상승") msg="약세 경보. 비트 하락 + 도미넌스 상승 → 알트 급락 위험. 현금·헤지·방어적 포지션 유리. 🔴";
-        else if(dDM==="하락") msg="투심 위축. 동반 하락은 자금 이탈 신호일 수 있음. 보수적·관망. 🔴";
-        else msg="비트 약세 우세. 도미넌스 따라 하방 압력/제한적 움직임. 전환 신호 확인 전 매매 자제. 🔴🟡";
-      } else {
-        if(dDM==="하락") msg="횡보+도미넌스 하락. 순환매/개별 강세 기대. 단기 트레이딩 유효. 🟢";
-        else if(dDM==="상승") msg="횡보+도미넌스 상승. 알트 자금 유출. 매수 자제 및 리스크 관리. 🟡";
-        else msg="방향성 탐색 구간. 개별 이슈 변동성/관망세. 단기 변동성 활용 or 관망. 🟡";
-      }
-      return msg;
-    }
-
-    // ==============================
-    // 알트 스캐너 (컴포지트 스코어, +DI/-DI 가점 포함)
-    // ==============================
-    function detectStructure(closes){
-      if(closes.length<8) return null;
-      const c=closes, last=c.length-1;
-      const h1=Math.max(c[last-1],c[last-2],c[last-3]);
-      const h0=Math.max(c[last-4],c[last-5],c[last-6]);
-      const l1=Math.min(c[last-1],c[last-2],c[last-3]);
-      const l0=Math.min(c[last-4],c[last-5],c[last-6]);
-      if(h1>h0 && l1>l0) return 'HHHL';
-      if(h1<h0 && l1<l0) return 'LHLL';
-      return 'MIX';
-    }
-    function marketGatingFromFavorability(fav){
-      return { longGate: clamp(1 + fav*0.2, 0.6, 1.2), shortGate: clamp(1 - fav*0.2, 0.6, 1.2) };
-    }
-    function scoreAltSide(m, side, gating){
-      let s=0;
-      // Trend (조정: ADX 5점, +DI/-DI 방향 일치 3점)
-      if(side==='LONG'){
-        if(m.price>m.ema20) s+=4;
-        if(m.ema20>m.ema50) s+=6;
-        if(m.ema20Slope>0) s+=5;
-        if(m.adx>=25) s+=5;                    // ADX 가점
-        if(m.struct==='HHHL') s+=7;
-        if(m.pdi!=null && m.mdi!=null && m.pdi>m.mdi) s+=3; // +DI 방향 가점
-      } else {
-        if(m.price<m.ema20) s+=4;
-        if(m.ema20<m.ema50) s+=6;
-        if(m.ema20Slope<0) s+=5;
-        if(m.adx>=25) s+=5;
-        if(m.struct==='LHLL') s+=7;
-        if(m.pdi!=null && m.mdi!=null && m.mdi>m.pdi) s+=3; // -DI 방향 가점
-      }
-      // Momentum (20)
-      if(side==='LONG'){ if(m.macdHist>0) s+=10; if(m.macdHistSlope>0) s+=10; }
-      else { if(m.macdHist<0) s+=10; if(m.macdHistSlope<0) s+=10; }
-      // Setup (20)
-      if(m.squeeze) s+=10;
-      if(side==='LONG' && m.bbwExpanding && m.macdHist>0) s+=10;
-      if(side==='SHORT'&& m.bbwExpanding && m.macdHist<0) s+=10;
-      // Volume (15) - RVOL
-      if(m.rvol>=2.0) s+=15; else if(m.rvol>=1.5) s+=10;
-      // Entry quality (15) - EMA20 거리(ATR)
-      if(m.distEma20InAtr!==null){
-        const d=m.distEma20InAtr;
-        if(d<=0.3) s+=15; else if(d<=0.5) s+=10; else if(d<=0.8) s+=5;
-      }
-      s *= gating;
-      return clamp(s,0,100);
-    }
-
-    async function analyzeAltSymbol(symbol, interval){
-      try{
-        const k = await getKlines(symbol, interval, KLINE_LIMIT);
-        const closes = k.map(x=>parseFloat(x[4]));
-        const vols   = k.map(x=>parseFloat(x[5]));
-        const price  = closes[closes.length-1];
-
-        const ema20 = ema(closes,20), ema50=ema(closes,50);
-        const ema20Prev = ema(closes.slice(0,-1),20);
-        const ema20Slope = (ema20Prev!==null && ema20!==null) ? (ema20-ema20Prev) : 0;
-
-        const macdObj = macd(closes, EMA_FAST, EMA_SLOW, MACD_SIGNAL) || {hist:null, prevHist:null};
-        const macdHist = macdObj.hist??0, macdHistSlope = (macdObj.prevHist!==null)? (macdObj.hist - macdObj.prevHist):0;
-
-        const atr = atrFromKlines(k, ATR_PERIOD) || null;
-        const dmi = dmiAdxFull(k, DMI_PERIOD) || {};
-        const adx = dmi.adx ?? null;
-        const pdi = dmi.pdi ?? null;
-        const mdi = dmi.mdi ?? null;
-
-        const bb = bollinger(closes, BB_PERIOD, BB_MULT) || {bwRatio:null};
-        const bwSeries=[];
-        for(let i=BB_PERIOD;i<closes.length;i++){
-          const bbx = bollinger(closes.slice(0,i), BB_PERIOD, BB_MULT);
-          if(bbx) bwSeries.push(bbx.bwRatio);
-        }
-        const bwQuant = bwSeries.length? quantile(bwSeries, 0.25): null;
-        const squeeze = (bb.bwRatio!==null && bwQuant!==null) ? (bb.bwRatio<=bwQuant) : false;
-        const bbwExpanding = (bwSeries.length>2 && bb.bwRatio!==null)? (bb.bwRatio > bwSeries[bwSeries.length-1]) : false;
-
-        const volSma = sma(vols,20);
-        const rvol = (volSma && volSma>0) ? (vols[vols.length-1] / volSma) : 1;
-
-        const distEma20InAtr = (atr && ema20)? Math.abs(price-ema20)/atr : null;
-        const struct = detectStructure(closes);
-
-        const metrics = {price, ema20, ema50, ema20Slope, macdHist, macdHistSlope, adx, pdi, mdi, atr, bbwRatio:bb.bwRatio, rvol, squeeze, bbwExpanding, distEma20InAtr, struct};
-        return {symbol, interval, metrics};
-      }catch(e){
-        addApiLog(`알트 분석 실패 ${symbol} ${interval}: ${e.message}`, true);
-        return null;
-      }
-    }
-
-    function positionSizing(balance, riskPct, atr, slMult, price){
-      if(!atr || !price || atr<=0) return {qty:null, lev:null};
-      const riskDollar = balance * (riskPct/100);
-      const denom = atr * slMult;
-      if(denom<=0) return {qty:null, lev:null};
-      const qty = riskDollar / denom; // 코인 수
-      const notional = qty * price;
-      const lev = notional>0 ? (notional / balance) : null;
-      return {qty, lev};
-    }
-
-    // ==============================
-    // 렌더링
-    // ==============================
-    function trendClass(t){ if(!t) return 'trend-side'; if(t.includes('상승')) return 'trend-up'; if(t.includes('하락')) return 'trend-down'; return 'trend-side'; }
-    function renderCurrent(btcPrice, domValue){
-      currentPricesDiv.innerHTML = `
-        <div class="kv"><span class="kv-label">현재 BTC</span><span class="kv-value">${fmt(btcPrice,2)} USDT</span></div>
-        <div class="kv"><span class="kv-label">현재 BTCDOM</span><span class="kv-value">${fmt(domValue,2)}</span></div>
-      `;
-    }
-    function renderRegime(regimeText, favScore, atrPct1D, adx4h){
-      const regimePill = regimeText.includes('트렌딩')? 'pill-green' : 'pill-yellow';
-      regimeBox.innerHTML = `
-        <div class="kv">
-          <span class="kv-label">시장 레짐</span>
-          <span><span class="pill ${regimePill}">${regimeText}</span></span>
-        </div>
-        <div class="kv"><span class="kv-label">알트 우호도</span><span class="kv-value">${favScore>0? '😊 +' : favScore<0? '⚠️ -' : '😐 0'} (${favScore.toFixed(2)})</span></div>
-        <div class="kv"><span class="kv-label">BTC 1D ATR%</span><span class="kv-value">${pct(atrPct1D,2)}</span></div>
-        <div class="kv"><span class="kv-label">BTC 4H ADX</span><span class="kv-value">${fmt(adx4h,1)}</span></div>
-      `;
-    }
-    function renderRiskAlerts(alerts){
-      riskAlerts.innerHTML='';
-      if(alerts.length===0){
-        const li=document.createElement('li'); li.textContent='특별 경고 없음. 기본 리스크 관리 유지 🛡️'; li.classList.add('text-green-300'); riskAlerts.appendChild(li);
-      } else { alerts.forEach(a=>{ const li=document.createElement('li'); li.textContent=a; riskAlerts.appendChild(li);}); }
-    }
-
-    // ==============================
-    // 심볼 소스 (전체 종목)
-    // ==============================
-    async function getAllUsdtPerpSymbols(maxCount=80, includeBTC=false){
-      try{
-        const [exInfo, allTickers] = await Promise.all([
-          fetchJson(EXCHANGE_INFO_URL,'exchangeInfo'),
-          fetchJson(TICKER_24HR_ALL,'24hr_all')
-        ]);
-        const allowed = new Set();
-        (exInfo.symbols||[]).forEach(s=>{
-          if(s.status==='TRADING' && s.quoteAsset==='USDT' && s.contractType==='PERPETUAL'){
-            allowed.add(s.symbol);
-          }
-        });
-        const filtered = (allTickers||[]).filter(t=> allowed.has(t.symbol));
-        // 거래대금(quoteVolume) 많음 순
-        filtered.sort((a,b)=> parseFloat(b.quoteVolume||'0') - parseFloat(a.quoteVolume||'0'));
-        const out=[];
-        for(const t of filtered){
-          if(!includeBTC && t.symbol==='BTCUSDT') continue;
-          if(t.symbol==='BTCDOMUSDT') continue; // 도미넌스 제외
-          out.push(t.symbol);
-          if(out.length>=maxCount) break;
-        }
-        addApiLog(`전체 종목 후보 ${out.length}개 선정`);
-        return out;
-      }catch(e){
-        addApiLog(`전체 종목 수집 실패: ${e.message}`, true);
-        return []; // 호출부에서 폴백
-      }
-    }
-
-    // ==============================
-    // 메인 분석 파이프라인
-    // ==============================
-    async function performAnalysis(){
-      clearError(); clearApiLogs();
-      loadingDiv.classList.remove('hidden');
-
-      const BAL = parseFloat(acctBalanceInput.value)||10000;
-      const RISK = clamp(parseFloat(riskPctInput.value)||1, 0.1, 5);
-      const SLmult = clamp(parseFloat(atrSLInput.value)||1.5, 0.5, 4);
-
-      try{
-        // 현재가
-        const [btcPrice, domPrice] = await Promise.all([ getTicker('BTCUSDT'), getTicker('BTCDOMUSDT') ]);
-        renderCurrent(btcPrice, domPrice);
-
-        // BTC/DOM 다중시간 추세
-        const analysesByInterval = {};
-        const trendPromises=[];
-        for(const tf of INTERVALS_TO_ANALYZE){
-          trendPromises.push(simpleTrend('BTCUSDT', tf));
-          trendPromises.push(simpleTrend('BTCDOMUSDT', tf));
-        }
-        const trendResults = await Promise.all(trendPromises);
-        for(const r of trendResults){
-          if(!r) continue;
-          if(!analysesByInterval[r.interval]) analysesByInterval[r.interval]={interval:r.interval};
-          if(r.symbol==='BTCUSDT') analysesByInterval[r.interval].btcTrendData = r;
-          else analysesByInterval[r.interval].domTrendData = r;
-          const a = analysesByInterval[r.interval];
-          if(a.btcTrendData && a.domTrendData){
-            a.altPrediction = determineAltDirection(a.btcTrendData.trend, a.domTrendData.trend);
-          }
-        }
-
-        // 전략 & 요약
-        const analysisTime = new Date();
-        lastAnalyzedAt.textContent = analysisTime.toLocaleString('ko-KR');
-        const strategy = generateOverallTradingStrategy(analysesByInterval); // ✅ 누락 함수 호출 복구
-        strategyTextP.textContent = strategy;
-        strategyContainerDiv.classList.remove('hidden');
-
-        summaryTitleH2.textContent = `시간대별 요약 (분석 시각: ${analysisTime.toLocaleString('ko-KR')})`;
-        summaryTableBody.innerHTML='';
-        detailedReasoningContainerDiv.innerHTML='';
-        let hasValid=false;
-
-        for(const tf of INTERVALS_TO_ANALYZE){
-          const a = analysesByInterval[tf]; if(!a) continue;
-          const bt = a.btcTrendData?.trend || '오류';
-          const dm = a.domTrendData?.trend || '오류';
-          const alt = a.altPrediction || '분석 불가';
-
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${tf}</td>
-            <td class="${trendClass(bt)}">${bt}</td>
-            <td class="${trendClass(dm)}">${dm}</td>
-            <td>${alt}</td>`;
-          summaryTableBody.appendChild(tr);
-          hasValid=true;
-
-          // 상세 근거: 기본 접힘(details)
-          const det = document.createElement('details');
-          det.className='acc-item';
-          const sum = document.createElement('summary');
-          sum.innerHTML = `<div class="flex w-full items-center justify-between">
-              <div><b>${tf}</b> 상세 분석 근거</div>
-              <div class="small text-gray-400">${alt}</div>
-            </div>`;
-          const body = document.createElement('div');
-          body.className='acc-body';
-          body.innerHTML = `
-            <div class="mb-2">
-              <h4 class="font-medium">BTC 근거</h4>
-              <p class="text-sm text-gray-300">${a.btcTrendData?.reasoning || 'N/A'}</p>
-            </div>
-            <div>
-              <h4 class="font-medium">BTCDOM 근거</h4>
-              <p class="text-sm text-gray-300">${a.domTrendData?.reasoning || 'N/A'}</p>
-            </div>`;
-          det.appendChild(sum); det.appendChild(body);
-          detailedReasoningContainerDiv.appendChild(det);
-        }
-        if(hasValid) summaryTableContainerDiv.classList.remove('hidden');
-
-        // 레짐/우호도/경고
-        let btc1dAtrPct=null, btc4hAdx=null;
-        const k1d = analysesByInterval['1d']?.btcTrendData?.klines || await getKlines('BTCUSDT','1d', KLINE_LIMIT);
-        const k4h = analysesByInterval['4h']?.btcTrendData?.klines || await getKlines('BTCUSDT','4h', KLINE_LIMIT);
-        const atr1d = atrFromKlines(k1d, ATR_PERIOD);
-        const last1dClose = parseFloat(k1d[k1d.length-1][4]);
-        btc1dAtrPct = atr1d? (atr1d/last1dClose*100): null;
-        const dmi4h = dmiAdxFull(k4h, DMI_PERIOD);
-        btc4hAdx = dmi4h? dmi4h.adx : null;
-
-        const trending = (btc4hAdx && btc4hAdx>=25) || (btc1dAtrPct && btc1dAtrPct>=4);
-        const fav = altFavorabilityScore(analysesByInterval);
-        renderRegime(trending? '트렌딩 모드' : '레인지/탐색 구간', fav, btc1dAtrPct||0, btc4hAdx||0);
-
-        const alerts=[];
-        if(btc1dAtrPct!==null && btc1dAtrPct>=6) alerts.push('BTC 1D ATR%가 높습니다(≥6%). 변동성 확대에 유의하세요.');
-        if(btc4hAdx!==null && btc4hAdx>=35) alerts.push('BTC 4H ADX가 강합니다(≥35). 추세 추종/되돌림 전략 유리 가능.');
-        renderRiskAlerts(alerts);
-
-        // 알트 스캔 실행
-        await runAltScanner(fav, BAL, RISK, SLmult);
-
-      }catch(e){
-        addApiLog(`분석 실패: ${e.message}`, true);
-        if(errorMessageDiv.classList.contains('hidden')) showError(`분석 중 오류: ${e.message} (로그를 확인하세요)`);
-        console.error(e);
-      }finally{
-        loadingDiv.classList.add('hidden');
-      }
-    }
-
-      async function runAltScanner(favorability, BAL, RISK, SLmult){
-        const { longGate, shortGate } = marketGatingFromFavorability(favorability);
-        altTableBody.innerHTML='';
-        const maxN = clamp(parseInt(maxScanSymbolsInput.value)||80, 10, 500);
-        const includeBTC = !!includeBTCInput.checked;
-        let symbols = await getAllUsdtPerpSymbols(maxN, includeBTC);
-        if(!symbols.length){
-          addApiLog('전체 종목 스캔 실패 → 프리셋(core)로 폴백', true);
-          symbols = PRESETS.core.slice();
-        }
-        if(!symbols.length){ addApiLog('스캔할 심볼이 없습니다.', true); showError('스캔할 심볼이 없습니다.'); return; }
-
-        scanRows = [];
-        for(const sym of symbols){
-          const category = getSymbolCategory(sym);
-          for(const tf of ALT_INTERVALS){
-            const res = await analyzeAltSymbol(sym, tf);
-            if(!res) continue;
-            const m = res.metrics;
-            const longScore = scoreAltSide(m,'LONG', longGate);
-            const shortScore= scoreAltSide(m,'SHORT', shortGate);
-            const side = longScore>=shortScore? 'LONG':'SHORT';
-            const score = Math.max(longScore, shortScore);
-            const entry = m.price;
-            const tp1 = side==='LONG'? (entry + m.atr*2) : (entry - m.atr*2);
-            const sl  = side==='LONG'? (entry - m.atr*SLmult) : (entry + m.atr*SLmult);
-            const rr  = (Math.abs(tp1-entry)) / (m.atr*SLmult);
-            const {qty, lev} = positionSizing(BAL, RISK, m.atr, SLmult, entry);
-            scanRows.push({
-              symbol:sym, category, interval:tf, side, score,
-              price:m.price, atr:m.atr, adx:m.adx, pdi:m.pdi, mdi:m.mdi, rvol:m.rvol, squeeze:m.squeeze,
-              entry, sl, tp1, rr, qty, lev
-            });
-            await sleep(20); // 과호출 방지용 소량 지연
-          }
-        }
-
-        for(const row of scanRows){
-          const [fund, oi] = await Promise.all([getFunding(row.symbol), getOI(row.symbol)]);
-          row.funding = (fund!==null? `${fund.toFixed(3)}%` : '-');
-          row.oi = (oi!==null? fmt(oi,0): '-');
-          await sleep(10);
-        }
-
-          renderAltTable('score');
-        }
-
-      function renderAltTable(sortMode='score'){
-        currentSort = sortMode;
-        const rows = [...scanRows];
-        if(sortMode==='score'){
-          rows.sort((a,b)=> b.score - a.score);
-        } else {
-          const target = sortMode==='majors'? 'Top Majors' : (sortMode==='core'? 'Core' : 'Meme');
-          rows.sort((a,b)=>{
-            const oa = a.category===target?0:1;
-            const ob = b.category===target?0:1;
-            if(oa!==ob) return oa - ob;
-            return b.score - a.score;
-          });
-        }
-        altTableBody.innerHTML='';
-        rows.forEach((r, idx)=>{
-          const tr = document.createElement('tr');
-          const clsSide = r.side==='LONG'? 'trend-up':'trend-down';
-          const squeezeTxt = r.squeeze? '✅':'-';
-          const qtyTxt = r.qty? fmt(r.qty,4):'-';
-          const levTxt = r.lev? `${r.lev.toFixed(2)}x`:'-';
-          const note = (r.rr>=1.3? '👍 R:R 양호':'') + (r.adx>=25? ' / ADX↑':'') + (r.rvol>=1.5? ' / RVOL↑':'');
-          tr.innerHTML = `
-            <td>${idx+1}</td>
-            <td>${r.symbol}</td>
-            <td>${r.category}</td>
-            <td>${r.interval}</td>
-            <td class="${clsSide}">${r.side}</td>
-            <td><b>${r.score.toFixed(0)}</b></td>
-            <td>${fmt(r.price,4)}</td>
-            <td>${fmt(r.atr,4)}</td>
-            <td>${fmt(r.adx,1)}</td>
-            <td>${r.pdi!=null? fmt(r.pdi,1): '-'}</td>
-            <td>${r.mdi!=null? fmt(r.mdi,1): '-'}</td>
-            <td>${fmt(r.rvol,2)}</td>
-            <td>${squeezeTxt}</td>
-            <td>${fmt(r.entry,4)}</td>
-            <td>${fmt(r.sl,4)}</td>
-            <td>${fmt(r.tp1,4)}</td>
-            <td>${fmt(r.rr,2)}</td>
-            <td>${qtyTxt}</td>
-            <td>${levTxt}</td>
-            <td>${r.funding||'-'}</td>
-            <td>${r.oi||'-'}</td>
-            <td class="small">${note||'-'}</td>
-          `;
-          altTableBody.appendChild(tr);
-        });
-      }
-
-      // ==============================
-      // UI 이벤트
-    // ==============================
-    function openSidebar(){ sidebar.classList.add('open'); sidebarBackdrop.classList.add('show'); }
-    function closeSidebar(){ sidebar.classList.remove('open'); sidebarBackdrop.classList.remove('show'); }
-    menuBtn?.addEventListener('click', openSidebar);
-    sidebarBackdrop?.addEventListener('click', closeSidebar);
-    sidebar.querySelectorAll('a.navlink').forEach(a=>{
-      a.addEventListener('click', ()=>{ if(window.innerWidth<=1024) closeSidebar(); });
-    });
-
-    // 차트 높이 슬라이더 (localStorage)
-    function loadChartHeight(){
-      const h = localStorage.getItem('chartHvh');
-      const val = h? Number(h) : 72;
-      document.documentElement.style.setProperty('--chart-h', `${val}vh`);
-      chartHeightRange.value = val;
-      chartHeightVal.textContent = String(val);
-    }
-    chartHeightRange.addEventListener('input', (e)=>{
-      const v = Number(e.target.value);
-      document.documentElement.style.setProperty('--chart-h', `${v}vh`);
-      chartHeightVal.textContent = String(v);
-      localStorage.setItem('chartHvh', String(v));
-    });
-
-    // 상세 근거 전체 펼치기/접기
-    expandAllBtn.addEventListener('click', ()=>{
-      detailedReasoningContainerDiv.querySelectorAll('details').forEach(d=> d.open = true);
-    });
-    collapseAllBtn.addEventListener('click', ()=>{
-      detailedReasoningContainerDiv.querySelectorAll('details').forEach(d=> d.open = false);
-    });
-
-      // 실행 버튼들
-      runNowBtn.addEventListener('click', ()=>performAnalysis());
-      scanBtnTop.addEventListener('click', async ()=>{
-        clearError(); addApiLog('스캐너 단독 실행');
-        const BAL = parseFloat(acctBalanceInput.value)||10000;
-        const RISK = clamp(parseFloat(riskPctInput.value)||1, 0.1, 5);
-        const SLmult = clamp(parseFloat(atrSLInput.value)||1.5, 0.5, 4);
-        // favorability는 최신 분석값이 없을 수 있으니 0으로 실행(시장 게이팅 비활성)
-        await runAltScanner(0, BAL, RISK, SLmult);
-      });
-
-      sortScoreBtn.addEventListener('click', ()=>renderAltTable('score'));
-      sortMajorsBtn.addEventListener('click', ()=>renderAltTable('majors'));
-      sortCoreBtn.addEventListener('click', ()=>renderAltTable('core'));
-      sortMemeBtn.addEventListener('click', ()=>renderAltTable('meme'));
-
-    // 초기화
-      window.onload = ()=>{
-        loadChartHeight();
-        performAnalysis(); // 자동 갱신 없음: 최초 1회만
-      };
-  </script>
+el.run.addEventListener('click',()=>performAnalysis());
+if(el.runTop)el.runTop.addEventListener('click',()=>performAnalysis());
+el.altBody.addEventListener('click',(e)=>{if(!e.target.classList.contains('chart-link'))return;e.preventDefault();renderTradingViewWidget(e.target.dataset.symbol,tvInterval(e.target.dataset.interval));});
+el.toggleReason.addEventListener('click',()=>{const hidden=el.reasonWrap.classList.toggle('hidden');el.toggleReason.textContent=hidden?'상세 근거 보기':'상세 근거 숨기기';});
+window.onload=async()=>{renderTradingViewWidget();renderDominanceWidget();await fetchAllSymbols();await performAnalysis();};
+</script>
 </body>
 </html>
+
+
+
