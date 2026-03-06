@@ -2216,10 +2216,6 @@ async function focusSingleSymbol(symbol){
     return;
   }
 
-  if(PRESETS.all.length && !PRESETS.all.includes(sym) && sym!=='BTCDOMUSDT'){
-    showError(`${sym}는 현재 바이낸스 USDT 선물 목록에서 찾지 못했습니다.`);
-    return;
-  }
 
   ACTIVE_SINGLE_SYMBOL = sym;
   el.singleSymbol.value = sym;
@@ -2340,6 +2336,7 @@ async function performAnalysis(){
     const gt=gating(fav),targets=[];
     for(const s of symbols) for(const tf of ALT_INTERVALS) targets.push({symbol:s,interval:tf});
     const raw=await mapLimit(targets,12,(t)=>analyzeAltInterval(t.symbol,t.interval));
+    const singleMode=!!ACTIVE_SINGLE_SYMBOL;
 
     const rows=[];
     for(const r of raw){
@@ -2351,7 +2348,7 @@ async function performAnalysis(){
         pack=side==='LONG'?L:S,
         flags=noTradeFlags(r.metrics,side);
 
-      if(pack.score<52) continue;
+      if(!singleMode&&pack.score<52) continue;
 
       const tp=tradePlan(r.metrics,side,SLM),
         sz=positionSizing(BAL,RISK,r.metrics.atr,SLM,r.metrics.price,r.metrics.atrPct);
@@ -2412,8 +2409,11 @@ async function performAnalysis(){
 
     el.altBody.innerHTML='';
     if(!top.length){
-      el.altBody.innerHTML='<tr><td colspan="22" class="py-4">현재 조건을 만족하는 후보가 없습니다. 필터 완화 또는 심볼 변경을 시도하세요.</td></tr>';
-      renderAltWidget("BINANCE:ETHUSDT","60","1h");
+      const emptyMsg=singleMode
+        ? `${ACTIVE_SINGLE_SYMBOL} 분석 결과를 만들지 못했습니다. 바이낸스 선물 캔들 히스토리가 부족하거나 지원되지 않는 심볼일 수 있습니다.`
+        : '현재 조건을 만족하는 후보가 없습니다. 필터 완화 또는 심볼 변경을 시도하세요.';
+      el.altBody.innerHTML=`<tr><td colspan="22" class="py-4">${emptyMsg}</td></tr>`;
+      renderAltWidget(`BINANCE:${ACTIVE_SINGLE_SYMBOL||'ETHUSDT'}`,"60","1h");
     }else{
       top.forEach((r,i)=>{
         const cls=r.side==='LONG'?'up':'dn',
@@ -2516,6 +2516,7 @@ window.onload=async()=>{
 </script>
 </body>
 </html>
+
 
 
 
