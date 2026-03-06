@@ -468,6 +468,35 @@
     </div>
   </section>
 
+  <section class="panel mb-4">
+    <h2 class="text-xl mb-3">카테고리별 분석</h2>
+    <div class="grid4">
+      <div class="col-span-3">
+        <label class="small">분석 카테고리</label>
+        <select id="preset" class="input">
+          <option value="core">Core</option>
+          <option value="majors">Majors</option>
+          <option value="ai">AI</option>
+          <option value="rwa">RWA</option>
+          <option value="tradfi">TradFi</option>
+          <option value="depin">DePIN / Infra</option>
+          <option value="l2">Layer 2</option>
+          <option value="meme">Meme</option>
+          <option value="lowcap">Small Caps</option>
+          <option value="all" disabled>전체 코인</option>
+        </select>
+      </div>
+      <div>
+        <button id="runNow" class="btn w-full">즉시 분석 실행</button>
+      </div>
+    </div>
+    <div class="helper-box mt-3">추천도 65 이상부터 검토하고, 65 미만은 방향 참고용으로만 보세요.</div>
+    <input id="acctBalance" type="hidden" value="10000" />
+    <input id="riskPct" type="hidden" value="1" />
+    <input id="atrSL" type="hidden" value="1.6" />
+    <input id="topN" type="hidden" value="10" />
+  </section>
+
   <section class="grid3 mb-4">
     <div class="panel">
       <h3 class="text-lg mb-2">현재 시장 지표</h3>
@@ -555,52 +584,7 @@
     <div id="detailedReasoningContainer" class="hidden"></div>
   </section>
 
-  <section class="panel mb-4">
-    <h2 class="text-xl mb-3">매매 설정</h2>
-    <div class="grid4">
-      <div>
-        <label class="small">계좌 잔고 (USDT)</label>
-        <input id="acctBalance" class="input" type="number" min="100" step="50" value="10000" />
-      </div>
-      <div>
-        <label class="small">거래당 위험 (%)</label>
-        <input id="riskPct" class="input" type="number" min="0.1" step="0.1" value="1" />
-      </div>
-      <div>
-        <label class="small">ATR 손절 배수</label>
-        <input id="atrSL" class="input" type="number" min="0.5" step="0.1" value="1.6" />
-      </div>
-      <div>
-        <label class="small">상위 후보 수</label>
-        <input id="topN" class="input" type="number" min="3" step="1" value="10" />
-      </div>
-    </div>
-
-    <div class="grid4 mt-3">
-      <div>
-        <label class="small">분석 카테고리</label>
-        <select id="preset" class="input">
-          <option value="core">Core</option>
-          <option value="majors">Majors</option>
-          <option value="ai">AI</option>
-          <option value="rwa">RWA</option>
-          <option value="tradfi">TradFi</option>
-          <option value="depin">DePIN / Infra</option>
-          <option value="l2">Layer 2</option>
-          <option value="meme">Meme</option>
-          <option value="lowcap">Small Caps</option>
-          <option value="all" disabled>전체 코인</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="mt-3 flex items-center gap-2">
-      <button id="runNow" class="btn">즉시 분석 실행</button>
-      <span class="small">추천도 65 이상부터 검토, 65 미만은 방향 참고용으로 보세요.</span>
-    </div>
-  </section>
-
-  <section id="topPicksSection" class="panel mb-4 hidden">
+<section id="topPicksSection" class="panel mb-4 hidden">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-xl">우선 확인할 코인 3개</h2>
       <span class="small">추천도 기준 우선순위</span>
@@ -817,8 +801,8 @@
   <section class="panel mb-4">
     <h2 class="text-xl mb-2">5. 기본 사용 순서</h2>
     <ol class="manual-list list-decimal">
-      <li>계좌 잔고, 거래당 위험, ATR 손절 배수를 설정합니다.</li>
-      <li>즉시 분석 실행을 누릅니다.</li>
+      <li>개별 코인 조회 또는 카테고리별 분석 중 원하는 방식으로 분석을 시작합니다.</li>
+      <li>즉시 분석 실행 또는 해당 코인만 분석 버튼을 누릅니다.</li>
       <li>시장 분위기와 BTC 기술 분석 브리핑에서 큰 흐름을 먼저 확인합니다.</li>
       <li>추천도 65 이상 후보부터 차트를 열고, 시나리오는 참고 설명으로 읽습니다.</li>
       <li>손절가와 주의사항을 확인한 뒤 진입 여부를 판단합니다.</li>
@@ -2608,6 +2592,7 @@ window.onload=async()=>{
 </script>
 </body>
 </html>
+
 
 
 
