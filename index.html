@@ -812,7 +812,7 @@ const PRESETS = {
   majors:['ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT','ADAUSDT','AVAXUSDT','TRXUSDT','LINKUSDT','DOTUSDT','NEARUSDT','POLUSDT'],
   ai:['TAOUSDT','FETUSDT','RENDERUSDT','AIXBTUSDT','WLDUSDT','GRTUSDT','THETAUSDT','INJUSDT'],
   rwa:['ONDOUSDT','PENDLEUSDT','INJUSDT','AVAXUSDT','VETUSDT','LINKUSDT','QNTUSDT','ENAUSDT'],
-  tradfi:['XAG','XPT','AMZN','COIN','XPD','TSLA','PLTR','XAU','MSTR','INTC','HOOD','COPPER','CRCL'],
+  tradfi:['XAGUSDT','XPTUSDT','AMZNUSDT','COINUSDT','XPDUSDT','TSLAUSDT','PLTRUSDT','XAUUSDT','MSTRUSDT','INTCUSDT','HOODUSDT','COPPERUSDT','CRCLUSDT'],
   depin:['RENDERUSDT','FILUSDT','THETAUSDT','IOTXUSDT','HNTUSDT','ARUSDT','TAOUSDT','GRTUSDT'],
   l2:['ARBUSDT','OPUSDT','POLUSDT','STRKUSDT','ZKUSDT','MANTAUSDT','IMXUSDT','METISUSDT'],
   meme:['DOGEUSDT','SHIBUSDT','PEPEUSDT','FLOKIUSDT','BONKUSDT','WIFUSDT','BOMEUSDT','BRETTUSDT'],
@@ -965,7 +965,7 @@ function displayFlags(flags){
 }
 
 function normalizeSymbolInput(input){
-  const raw = (input||'').trim().toUpperCase().replace(/\s+/g,'');
+  const raw = (input||'').trim().toUpperCase().replace(/\s+/g,'').replace(/\.P$/,'');
   const aliases = {BTCD:'BTCDOMUSDT',BTCDOM:'BTCDOMUSDT',DOM:'BTCDOMUSDT'};
   if(!raw) return '';
   if(aliases[raw]) return aliases[raw];
@@ -2516,5 +2516,8 @@ window.onload=async()=>{
 </script>
 </body>
 </html>
+
+
+
 
 
