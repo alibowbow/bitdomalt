@@ -596,15 +596,16 @@
 
     <div class="mt-3 flex items-center gap-2">
       <button id="runNow" class="btn">즉시 분석 실행</button>
-      <span class="small">추천도 = 종합점수 + 방향 일치도 - 리스크 감점</span>
+      <span class="small">추천도 65 이상부터 검토, 65 미만은 방향 참고용으로 보세요.</span>
     </div>
   </section>
 
   <section id="topPicksSection" class="panel mb-4 hidden">
     <div class="flex items-center justify-between mb-3">
-      <h2 class="text-xl">먼저 보면 좋은 코인 3개</h2>
-      <span class="small">추천도 높은 순</span>
+      <h2 class="text-xl">우선 확인할 코인 3개</h2>
+      <span class="small">추천도 기준 우선순위</span>
     </div>
+    <div class="helper-box mb-3">방향은 매수/매도 지시가 아니라 시나리오입니다. 추천도 65 이상부터 검토하고, 65 미만은 방향 참고용으로만 보세요.</div>
     <div id="topPicks" class="pick-grid"></div>
   </section>
 
@@ -617,7 +618,7 @@
       </div>
     </div>
     <div class="helper-box mb-3">
-      추천도 = 종합점수 + 방향 일치도 - 리스크 감점
+      추천도 80 이상은 강한 후보, 65 이상은 검토 가능 구간입니다. 방향은 행동 지시가 아니라 시나리오입니다.
     </div>
     <div class="overflow-x-auto">
       <table class="summary">
@@ -626,7 +627,7 @@
             <th>순위</th>
             <th>코인</th>
             <th>시간</th>
-            <th>방향</th>
+            <th>시나리오</th>
             <th>종합점수</th>
             <th>방향일치도</th>
             <th>추천도</th>
@@ -940,7 +941,7 @@ function friendlyTrend(t){
   return t || '-';
 }
 
-function friendlySide(s){ return s==='LONG' ? '상승 기대' : '하락 대응'; }
+function friendlySide(s){ return s==='LONG' ? '상승 시나리오' : '하락 시나리오'; }
 
 function marketMoodLabel(code){
   if(code==='trend') return '한 방향 흐름이 강한 구간';
@@ -982,11 +983,31 @@ function toTvPerpSymbol(raw){
 }
 
 function sideLabel(side){
-  return side === 'LONG' ? '매수 관점' : '매도 관점';
+  return side === 'LONG' ? '상승 시나리오' : '하락 시나리오';
 }
 
 function sideClass(side){
   return side === 'LONG' ? 'long' : 'short';
+}
+
+function recommendationBand(score){
+  if(score>=80) return '강한 후보';
+  if(score>=65) return '검토 가능';
+  if(score>=50) return '관찰 구간';
+  return '관망 우선';
+}
+
+function recommendationClass(score){
+  if(score>=80) return 'pill pill-up';
+  if(score>=65) return 'pill pill-md';
+  return 'pill pill-dn';
+}
+
+function recommendationGuide(score){
+  if(score>=80) return '차트 재확인 후 우선 검토';
+  if(score>=65) return '손절가 확인 후 선별 검토';
+  if(score>=50) return '방향 참고용, 성급한 진입 금지';
+  return '관망 우선, 분석 참고용';
 }
 
 function scrollToNode(node){
@@ -2075,8 +2096,8 @@ function renderTopPicks(rows){
           <div class="small mt-1">${r.interval} 기준</div>
         </div>
         <div class="flex flex-col items-end gap-2">
+          <span class="${recommendationClass(r.confidence)}">추천도 ${fix(r.confidence,0)} · ${recommendationBand(r.confidence)}</span>
           <span class="side-badge ${sideClass(r.side)}">${sideLabel(r.side)}</span>
-          <span class="${r.side==='LONG'?'pill pill-up':'pill pill-dn'}">추천도 ${fix(r.confidence,0)}</span>
         </div>
       </div>
 
@@ -2086,7 +2107,8 @@ function renderTopPicks(rows){
         1차목표 ${fmt(r.tp1,4)} / 손익비 ${r.rr!==null?fix(r.rr,2):'-'}
       </div>
 
-      <div class="small mt-3 relative z-10">주의: ${displayFlags(r.flags)}</div>
+      <div class="small mt-2 relative z-10">판단: ${recommendationGuide(r.confidence)}</div>
+      <div class="small mt-2 relative z-10">주의: ${displayFlags(r.flags)}</div>
 
       <div class="quick-actions mt-3 relative z-10">
         <button class="btn chart-link" data-symbol="BINANCE:${r.symbol}" data-interval="${r.interval}">
@@ -2430,7 +2452,7 @@ async function performAnalysis(){
            <td class="${cls}">${friendlySide(r.side)}</td>
            <td><b>${fix(r.score,0)}</b></td>
            <td>${fix(r.confluence,0)}</td>
-           <td>${fix(r.confidence,0)}</td>
+           <td><div class="font-bold">${fix(r.confidence,0)}</div><div class="small">${recommendationBand(r.confidence)}</div></td>
            <td>${fmt(r.metrics.price,4)}</td>
            <td class="adv-col">${fix(r.metrics.atrPct,2)}%</td>
            <td class="adv-col">${fix(r.metrics.adx,1)}</td>
@@ -2516,6 +2538,7 @@ window.onload=async()=>{
 </script>
 </body>
 </html>
+
 
 
 
