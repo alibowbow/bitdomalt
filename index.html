@@ -590,8 +590,8 @@
 
 <section id="topPicksSection" class="panel mb-4 hidden">
     <div class="flex items-center justify-between mb-3">
-      <h2 class="text-xl">우선 확인할 코인 3개</h2>
-      <span class="small">추천도 기준 우선순위</span>
+      <h2 id="topPicksTitle" class="text-xl">우선 확인할 코인 3개</h2>
+      <span id="topPicksMeta" class="small">추천도 기준 우선순위</span>
     </div>
     <div class="helper-box mb-3">방향은 매수/매도 지시가 아니라 시나리오입니다. 추천도 65 이상부터 검토하고, 65 미만은 방향 참고용으로만 보세요.</div>
     <div id="topPicks" class="pick-grid"></div>
@@ -599,13 +599,13 @@
 
   <section class="panel mb-4">
     <div class="flex items-center justify-between mb-3">
-      <h2 class="text-xl">지금 볼 만한 코인</h2>
+      <h2 id="altSectionTitle" class="text-xl">지금 볼 만한 코인</h2>
       <div class="mode-switch">
         <button id="simpleModeBtn" class="mode-btn active">간단히 보기</button>
         <button id="advancedModeBtn" class="mode-btn">전문가 보기</button>
       </div>
     </div>
-    <div class="helper-box mb-3">
+    <div id="altSectionGuide" class="helper-box mb-3">
       추천도 80 이상은 강한 후보, 65 이상은 검토 가능 구간입니다. 방향은 행동 지시가 아니라 시나리오입니다.
     </div>
     <div class="overflow-x-auto">
@@ -867,8 +867,9 @@ const API = {
 const LIMIT = 260;
 const INTERVALS = ['5m','15m','1h','4h','1d'];
 const ALT_INTERVALS = ['15m','1h','4h'];
+const SINGLE_ALT_INTERVALS = ['15m','1h','4h','1d'];
 const TF_WEIGHT = {'5m':1,'15m':2,'1h':3,'4h':5,'1d':7};
-const ALT_TF_WEIGHT = {'15m':1,'1h':2,'4h':3};
+const ALT_TF_WEIGHT = {'15m':1,'1h':2,'4h':3,'1d':4};
 const TREND_TH = {'5m':0.2,'15m':0.3,'1h':0.5,'4h':0.8,'1d':1.0};
 
 const PRESETS = {
@@ -935,8 +936,12 @@ const el = {
 
   topPicksWrap:document.getElementById('topPicksSection'),
   topPicks:document.getElementById('topPicks'),
+  topPicksTitle:document.getElementById('topPicksTitle'),
+  topPicksMeta:document.getElementById('topPicksMeta'),
 
   selectedAltLabel:document.getElementById('selectedAltLabel'),
+  altSectionTitle:document.getElementById('altSectionTitle'),
+  altSectionGuide:document.getElementById('altSectionGuide'),
 
   simpleModeBtn:document.getElementById('simpleModeBtn'),
   advancedModeBtn:document.getElementById('advancedModeBtn'),
@@ -1860,7 +1865,7 @@ function decideSide(m){
   return L>=S?'LONG':'SHORT';
 }
 
-function confluence(rows){
+function confluence(rows,intervalSet=ALT_INTERVALS){
   const map=new Map();
   for(const r of rows){
     if(!map.has(r.symbol)) map.set(r.symbol,[]);
@@ -1876,7 +1881,7 @@ function confluence(rows){
     }
     const dom=l>=s?'LONG':'SHORT',
       align=t>0?Math.max(l,s)/t:0,
-      cover=arr.length/ALT_INTERVALS.length;
+      cover=arr.length/intervalSet.length;
     out.set(sym,{dom,score:clamp(align*70+cover*30,0,100)});
   }
   return out;
@@ -2419,9 +2424,14 @@ async function performAnalysis(){
     if(has) el.summaryWrap.classList.remove('hidden');
 
     const gt=gating(fav),targets=[];
-    for(const s of symbols) for(const tf of ALT_INTERVALS) targets.push({symbol:s,interval:tf});
-    const raw=await mapLimit(targets,12,(t)=>analyzeAltInterval(t.symbol,t.interval));
     const singleMode=!!ACTIVE_SINGLE_SYMBOL;
+    const scanIntervals=singleMode ? SINGLE_ALT_INTERVALS : ALT_INTERVALS;
+    el.topPicksTitle.textContent=singleMode ? '선택한 코인 요약' : '우선 확인할 코인 3개';
+    el.topPicksMeta.textContent=singleMode ? '시간대별 요약' : '추천도 기준 우선순위';
+    el.altSectionTitle.textContent=singleMode ? `${ACTIVE_SINGLE_SYMBOL} 시간대별 분석` : '지금 볼 만한 코인';
+    el.altSectionGuide.textContent=singleMode ? '개별 코인 분석에서는 15m, 1h, 4h, 1d를 모두 표시합니다. 추천도는 시간대별 비교 참고용입니다.' : '추천도 80 이상은 강한 후보, 65 이상은 검토 가능 구간입니다. 방향은 행동 지시가 아니라 시나리오입니다.';
+    for(const s of symbols) for(const tf of scanIntervals) targets.push({symbol:s,interval:tf});
+    const raw=await mapLimit(targets,12,(t)=>analyzeAltInterval(t.symbol,t.interval));
 
     const rows=[];
     for(const r of raw){
@@ -2452,7 +2462,7 @@ async function performAnalysis(){
       });
     }
 
-    const conf=confluence(rows);
+    const conf=confluence(rows,scanIntervals);
     for(const r of rows){
       const c=conf.get(r.symbol)||{dom:r.side,score:50};
       r.confluence=c.score;
@@ -2462,15 +2472,20 @@ async function performAnalysis(){
 
     rows.sort((a,b)=>((b.confidence??0)-(a.confidence??0))||((b.score??0)-(a.score??0)));
 
-    const bestRows=[];
-    const seenSymbols=new Set();
-    for(const r of rows){
-      if(seenSymbols.has(r.symbol)) continue;
-      seenSymbols.add(r.symbol);
-      bestRows.push(r);
+    let top;
+    if(singleMode){
+      const rankMap=Object.fromEntries(scanIntervals.map((tf,i)=>[tf,i]));
+      top=[...rows].sort((a,b)=>(rankMap[a.interval]??99)-(rankMap[b.interval]??99));
+    }else{
+      const bestRows=[];
+      const seenSymbols=new Set();
+      for(const r of rows){
+        if(seenSymbols.has(r.symbol)) continue;
+        seenSymbols.add(r.symbol);
+        bestRows.push(r);
+      }
+      top=bestRows.slice(0,TOPN);
     }
-
-    let top=bestRows.slice(0,TOPN);
     const meta={};
 
     for(const s of top.map(r=>r.symbol)){
@@ -2488,9 +2503,14 @@ async function performAnalysis(){
       r.confidence=confidence(r.score,r.confluence,r.flags);
     }
 
-    top.sort((a,b)=>((b.confidence??0)-(a.confidence??0))||((b.score??0)-(a.score??0)));
+    if(singleMode){
+      const rankMap=Object.fromEntries(scanIntervals.map((tf,i)=>[tf,i]));
+      top.sort((a,b)=>(rankMap[a.interval]??99)-(rankMap[b.interval]??99));
+    }else{
+      top.sort((a,b)=>((b.confidence??0)-(a.confidence??0))||((b.score??0)-(a.score??0)));
+    }
 
-    renderTopPicks(top);
+    renderTopPicks(singleMode ? [...rows].sort((a,b)=>((b.confidence??0)-(a.confidence??0))||((b.score??0)-(a.score??0))) : top);
 
     el.altBody.innerHTML='';
     if(!top.length){
@@ -2534,7 +2554,9 @@ async function performAnalysis(){
         el.altBody.appendChild(tr);
       });
 
-      renderAltWidget(`BINANCE:${top[0].symbol}`, tvInterval(top[0].interval), top[0].interval);
+      if(!singleMode){
+        renderAltWidget(`BINANCE:${top[0].symbol}`, tvInterval(top[0].interval), top[0].interval);
+      }
     }
 
     applyViewMode();
@@ -2601,6 +2623,8 @@ window.onload=async()=>{
 </script>
 </body>
 </html>
+
+
 
 
 
