@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -790,7 +790,7 @@
     <div class="manual-grid">
       <div class="manual-note">
         <div class="manual-title">핵심 레벨</div>
-        <p class="text-sm leading-7">1차 / 2차 지지와 저항은 가격이 멈추거나 반응할 가능성이 큰 구간입니다. 추천도가 높아도 저항 바로 아래에서는 추격 진입을 줄이고, 지지 이탈 시에는 손절을 먼저 생각합니다.</p>
+        <p class="text-sm leading-7"><span class="manual-accent">즉시 지지 / 저항</span>은 현재 가격 근처의 단기 반응 구간이고, <span class="manual-good">구조 지지 / 저항</span>은 더 큰 시간대에서 의미 있는 상위 구간입니다. 추천도가 높아도 즉시 저항 바로 아래에서는 추격 진입을 줄이고, 즉시 지지 이탈 시에는 손절을 먼저 생각합니다.</p>
       </div>
       <div class="manual-note">
         <div class="manual-title">브레이크 / 조정 체크</div>
@@ -1494,6 +1494,263 @@ function nearestLevelsFromKlines(kl){
   };
 }
 
+function countTouchesNearLevel(values,level,tolerancePct=0.0035){
+  if(!values||!values.length||!level) return 0;
+  return values.reduce((n,v)=>n+(Math.abs(v-level)/(level||1)<=tolerancePct?1:0),0);
+}
+
+function volumeProfileNodes(kl,bins=28,topN=4){
+  if(!kl||kl.length<30) return [];
+  const highs=kl.map(k=>+k[2]);
+  const lows=kl.map(k=>+k[3]);
+  const hi=Math.max(...highs), lo=Math.min(...lows);
+  if(!Number.isFinite(hi)||!Number.isFinite(lo)||hi<=lo) return [];
+
+  const step=(hi-lo)/bins || hi*0.001;
+  const profile=Array.from({length:bins},()=>0);
+
+  for(const k of kl){
+    const o=+k[1], h=+k[2], l=+k[3], c=+k[4], v=+k[5];
+    const tp=(h+l+c)/3;
+    const idx=clamp(Math.floor((tp-lo)/step),0,bins-1);
+    const body=Math.abs(c-o)/Math.max(h-l,1e-9);
+    profile[idx]+=v*(0.85+body*0.3);
+  }
+
+  const maxVol=Math.max(...profile,0);
+  if(maxVol<=0) return [];
+
+  const peaks=[];
+  for(let i=0;i<profile.length;i++){
+    const cur=profile[i], prev=profile[i-1]??-Infinity, next=profile[i+1]??-Infinity;
+    if(cur<prev||cur<next) continue;
+    peaks.push({idx:i,price:lo+step*(i+0.5),strength:cur/maxVol});
+  }
+
+  peaks.sort((a,b)=>b.strength-a.strength);
+  const selected=[];
+  for(const p of peaks){
+    if(selected.some(s=>Math.abs(s.idx-p.idx)<=2)) continue;
+    selected.push(p);
+    if(selected.length>=topN) break;
+  }
+  return selected;
+}
+
+function buildLevelCandidates(kl,timeframe,tfWeight,currentPrice){
+  if(!kl||!kl.length) return [];
+  const highs=kl.map(k=>+k[2]);
+  const lows=kl.map(k=>+k[3]);
+  const closes=kl.map(k=>+k[4]);
+  const atrv=atr(kl,14)||currentPrice*0.012;
+  const tolerancePct=timeframe==='1D'?0.006:0.0045;
+  const candidates=[];
+
+  const addCandidate=(price,side,score,source)=>{
+    if(!Number.isFinite(price)||price<=0||!Number.isFinite(score)||score<=0) return;
+    candidates.push({price,side,score,source,timeframe});
+  };
+
+  const lowPivots=pivotLows(lows,4,4).slice(-12);
+  for(const p of lowPivots){
+    const touches=countTouchesNearLevel(lows,p.v,tolerancePct);
+    const age=(kl.length-1-p.i)/Math.max(1,kl.length-1);
+    const recency=clamp(1.45-age*1.1,0.25,1.45);
+    const futureHigh=Math.max(...highs.slice(p.i+1,Math.min(kl.length,p.i+9)),closes.at(-1));
+    const reaction=Math.max(0,(futureHigh-p.v)/(atrv||1));
+    addCandidate(p.v,'support',tfWeight*2.1+Math.min(touches,5)*0.8+Math.min(reaction,4)*0.9+recency,'pivot');
+  }
+
+  const highPivots=pivotHighs(highs,4,4).slice(-12);
+  for(const p of highPivots){
+    const touches=countTouchesNearLevel(highs,p.v,tolerancePct);
+    const age=(kl.length-1-p.i)/Math.max(1,kl.length-1);
+    const recency=clamp(1.45-age*1.1,0.25,1.45);
+    const futureLow=Math.min(...lows.slice(p.i+1,Math.min(kl.length,p.i+9)),closes.at(-1));
+    const reaction=Math.max(0,(p.v-futureLow)/(atrv||1));
+    addCandidate(p.v,'resistance',tfWeight*2.1+Math.min(touches,5)*0.8+Math.min(reaction,4)*0.9+recency,'pivot');
+  }
+
+  const nodes=volumeProfileNodes(kl,timeframe==='1D'?32:28,timeframe==='1D'?4:5);
+  for(const node of nodes){
+    const side=node.price<=currentPrice?'support':'resistance';
+    const distancePct=Math.abs(node.price-currentPrice)/(currentPrice||1)*100;
+    const proximity=clamp(1.6-distancePct*0.08,0.3,1.6);
+    addCandidate(node.price,side,tfWeight*1.6+node.strength*4+proximity,'volume');
+  }
+
+  const don=donchian(kl,timeframe==='1D'?26:20);
+  if(don){
+    addCandidate(don.lower,'support',tfWeight*1.15,'donchian');
+    addCandidate(don.upper,'resistance',tfWeight*1.15,'donchian');
+  }
+
+  return candidates;
+}
+
+function clusterLevelZones(candidates,currentPrice,atrBasis){
+  if(!candidates||!candidates.length) return {supports:[],resistances:[]};
+  const tolerance=Math.max((atrBasis||currentPrice*0.01)*0.22,currentPrice*0.003);
+  const padBase=Math.max((atrBasis||currentPrice*0.01)*0.14,currentPrice*0.0018);
+
+  const toZones=(side)=>{
+    const arr=candidates.filter(c=>c.side===side).sort((a,b)=>a.price-b.price);
+    if(!arr.length) return [];
+
+    const clusters=[];
+    for(const c of arr){
+      const prev=clusters[clusters.length-1];
+      if(!prev||Math.abs(c.price-prev.center)>tolerance){
+        clusters.push({
+          center:c.price,
+          weightedPrice:c.price*c.score,
+          totalScore:c.score,
+          prices:[c.price],
+          timeframes:new Set([c.timeframe]),
+          sources:new Set([c.source]),
+          count:1
+        });
+      }else{
+        prev.totalScore+=c.score;
+        prev.weightedPrice+=c.price*c.score;
+        prev.center=prev.weightedPrice/prev.totalScore;
+        prev.prices.push(c.price);
+        prev.timeframes.add(c.timeframe);
+        prev.sources.add(c.source);
+        prev.count++;
+      }
+    }
+
+    return clusters.map(z=>{
+      const minP=Math.min(...z.prices), maxP=Math.max(...z.prices);
+      const pad=Math.max(padBase,(maxP-minP)*0.65+padBase*0.45);
+      return {
+        side,
+        center:z.center,
+        low:Math.max(0,z.center-pad),
+        high:z.center+pad,
+        score:z.totalScore,
+        count:z.count,
+        timeframes:[...z.timeframes],
+        sources:[...z.sources]
+      };
+    });
+  };
+
+  return {
+    supports:toZones('support'),
+    resistances:toZones('resistance')
+  };
+}
+
+function zoneDistancePct(zone,price){
+  return !zone||!price?Infinity:Math.abs(zone.center-price)/(price||1)*100;
+}
+
+function zoneMetaScore(zone){
+  if(!zone) return 0;
+  return (zone.timeframes?.length||0)*1.1 + (zone.sources?.length||0)*0.7 + Math.min(zone.count||0,4)*0.45;
+}
+
+function pickImmediateZone(zones,price,side){
+  const filtered=(zones||[]).filter(z=>side==='support'?z.center<price:z.center>price);
+  if(!filtered.length) return null;
+  return [...filtered].sort((a,b)=>{
+    const aRank=a.score+zoneMetaScore(a)-zoneDistancePct(a,price)*1.4;
+    const bRank=b.score+zoneMetaScore(b)-zoneDistancePct(b,price)*1.4;
+    return (bRank-aRank)||(zoneDistancePct(a,price)-zoneDistancePct(b,price));
+  })[0];
+}
+
+function pickStructuralZone(zones,price,side,primary){
+  let filtered=(zones||[]).filter(z=>side==='support'?z.center<price:z.center>price);
+  if(primary){
+    filtered=filtered.filter(z=>side==='support'?z.center<primary.center*0.995:z.center>primary.center*1.005);
+  }
+  if(!filtered.length&&primary){
+    filtered=(zones||[]).filter(z=>zoneDistancePct(z,primary.center)>0.2 && (side==='support'?z.center<price:z.center>price));
+  }
+  if(!filtered.length) return null;
+  return [...filtered].sort((a,b)=>{
+    const aRank=a.score+zoneMetaScore(a)-Math.max(0,zoneDistancePct(a,price)-20)*0.35;
+    const bRank=b.score+zoneMetaScore(b)-Math.max(0,zoneDistancePct(b,price)-20)*0.35;
+    return (bRank-aRank)||(zoneDistancePct(a,price)-zoneDistancePct(b,price));
+  })[0];
+}
+
+function fallbackLevelZone(value,side,atrBasis,source='fallback'){
+  if(!Number.isFinite(value)||value<=0) return null;
+  const pad=Math.max((atrBasis||value*0.01)*0.14,value*0.0018);
+  return {
+    side,
+    center:value,
+    low:Math.max(0,value-pad),
+    high:value+pad,
+    score:0,
+    count:1,
+    timeframes:[],
+    sources:[source]
+  };
+}
+
+function buildBtcLevelZones(k4h,k1d,currentPrice){
+  if(!k4h||!k1d||!currentPrice) return {
+    immediateSupport:null,
+    structuralSupport:null,
+    immediateResistance:null,
+    structuralResistance:null
+  };
+
+  const atr4=atr(k4h,14)||currentPrice*0.012;
+  const atr1=atr(k1d,14)||currentPrice*0.02;
+  const don4=donchian(k4h,20);
+  const don1=donchian(k1d,26);
+
+  const candidates=[
+    ...buildLevelCandidates(k4h,'4H',1.2,currentPrice),
+    ...buildLevelCandidates(k1d,'1D',2.1,currentPrice)
+  ];
+
+  const zones=clusterLevelZones(candidates,currentPrice,Math.max(atr4,atr1*0.45));
+
+  let immediateSupport=pickImmediateZone(zones.supports,currentPrice,'support');
+  let immediateResistance=pickImmediateZone(zones.resistances,currentPrice,'resistance');
+
+  if(!immediateSupport) immediateSupport=fallbackLevelZone(don4?.lower ?? don1?.lower,'support',atr4,'donchian');
+  if(!immediateResistance) immediateResistance=fallbackLevelZone(don4?.upper ?? don1?.upper,'resistance',atr4,'donchian');
+
+  let structuralSupport=pickStructuralZone(zones.supports,currentPrice,'support',immediateSupport);
+  let structuralResistance=pickStructuralZone(zones.resistances,currentPrice,'resistance',immediateResistance);
+
+  if(!structuralSupport) structuralSupport=fallbackLevelZone(don1?.lower ?? don4?.lower,'support',atr1,'donchian');
+  if(!structuralResistance) structuralResistance=fallbackLevelZone(don1?.upper ?? don4?.upper,'resistance',atr1,'donchian');
+
+  return {
+    immediateSupport,
+    structuralSupport,
+    immediateResistance,
+    structuralResistance
+  };
+}
+
+function formatZone(zone){
+  if(!zone) return '-';
+  const low=zone.low ?? zone.center;
+  const high=zone.high ?? zone.center;
+  const center=zone.center ?? ((low+high)/2);
+  if(!Number.isFinite(low)||!Number.isFinite(high)||!Number.isFinite(center)) return '-';
+  if(Math.abs(high-low)/(center||1)<=0.0018) return fmt(center,2);
+  return `${fmt(low,2)} ~ ${fmt(high,2)}`;
+}
+
+function zoneSummary(zone){
+  if(!zone) return '-';
+  const srcMap={pivot:'swing',volume:'volume',donchian:'donchian',fallback:'fallback'};
+  const tf=zone.timeframes?.length?zone.timeframes.join('+'):'fallback';
+  const src=zone.sources?.length?zone.sources.map(s=>srcMap[s]||s).join(' + '):'fallback';
+  return `${tf} · ${src}`;
+}
+
 function estimateNeelyWave(kl){
   if(!kl||kl.length<80){
     return {label:'스윙 부족',bias:0,detail:'유효 스윙이 충분하지 않습니다.'};
@@ -2018,8 +2275,6 @@ function buildBtcForecast(byTf){
   const adx4=dmiAdx(k4h,14);
   const macd4=macd(c4h);
   const sq4=squeezeState(k4h);
-  const don4=donchian(k4h,20);
-  const don1d=donchian(k1d,20);
   const atr1d=atr(k1d,14);
   const atrPct1d=atr1d ? atr1d/(+k1d.at(-1)[4])*100 : null;
 
@@ -2029,13 +2284,11 @@ function buildBtcForecast(byTf){
   const wave4h=estimateNeelyWave(k4h);
   const wave1d=estimateNeelyWave(k1d);
 
-  const lvl4=nearestLevelsFromKlines(k4h);
-  const lvl1d=nearestLevelsFromKlines(k1d);
-
-  const s1=lvl4.s1 ?? don4?.lower ?? don1d?.lower ?? null;
-  const s2=lvl1d.s1 ?? don1d?.lower ?? lvl4.s2 ?? null;
-  const r1=lvl4.r1 ?? don4?.upper ?? don1d?.upper ?? null;
-  const r2=lvl1d.r1 ?? don1d?.upper ?? lvl4.r2 ?? null;
+  const levels=buildBtcLevelZones(k4h,k1d,price);
+  const s1Text=formatZone(levels.immediateSupport);
+  const s2Text=formatZone(levels.structuralSupport);
+  const r1Text=formatZone(levels.immediateResistance);
+  const r2Text=formatZone(levels.structuralResistance);
 
   let score=0;
   if(byTf['4h']?.btc?.trend==='상승') score+=2;
@@ -2065,11 +2318,11 @@ function buildBtcForecast(byTf){
   const scenario=[];
   scenario.push(`4h 추세 ${byTf['4h']?.btc?.trend || '-'}, 1d 추세 ${byTf['1d']?.btc?.trend || '-'}.`);
   if(score>=3){
-    scenario.push(`상방 우세 구조입니다. ${fmt(s1,2)} 지지 유지 시 ${fmt(r1,2)} 재시험, 상단 돌파 시 ${fmt(r2,2)} 확장 시나리오를 우선 점검합니다.`);
+    scenario.push(`상방 우세 구조입니다. ${s1Text} 지지 구간 유지 시 ${r1Text} 재시험을 우선 보고, 돌파 시 ${r2Text} 구조 저항 구간까지 확장 가능성을 점검합니다.`);
   }else if(score<=-3){
-    scenario.push(`하방 우세 구조입니다. ${fmt(r1,2)} 회복 전까지는 보수 대응이 유리하며, ${fmt(s1,2)} 이탈 시 ${fmt(s2,2)} 테스트 가능성을 열어둡니다.`);
+    scenario.push(`하방 우세 구조입니다. ${r1Text} 회복 전까지는 보수 대응이 유리하며, ${s1Text} 이탈 시 ${s2Text} 구조 지지 구간 테스트 가능성을 열어둡니다.`);
   }else{
-    scenario.push(`중립 / 혼조 구간입니다. ${fmt(s1,2)} ~ ${fmt(r1,2)} 범위 내 방향 재정렬 가능성을 우선 봅니다.`);
+    scenario.push(`중립 / 혼조 구간입니다. ${s1Text} ~ ${r1Text} 구간 안에서 방향 재정렬 가능성을 우선 봅니다.`);
   }
 
   if(div4h.bullish) scenario.push('4h RSI 상승 다이버전스가 감지되어 하락 둔화 및 반등 시도 가능성을 체크해야 합니다.');
@@ -2089,7 +2342,14 @@ function buildBtcForecast(byTf){
     divergence4h:div4h,
     wave4h,
     wave1d,
-    s1,s2,r1,r2,
+    immediateSupport:levels.immediateSupport,
+    structuralSupport:levels.structuralSupport,
+    immediateResistance:levels.immediateResistance,
+    structuralResistance:levels.structuralResistance,
+    s1:levels.immediateSupport?.center ?? null,
+    s2:levels.structuralSupport?.center ?? null,
+    r1:levels.immediateResistance?.center ?? null,
+    r2:levels.structuralResistance?.center ?? null,
     squeezeLabel,
     macdHist:macd4?.hist ?? null,
     adx:adx4?.adx ?? null,
@@ -2097,7 +2357,6 @@ function buildBtcForecast(byTf){
     scenario:scenario.join(' ')
   };
 }
-
 function renderBtcForecast(obj){
   if(!obj){
     el.btcForecastWrap.classList.add('hidden');
@@ -2122,10 +2381,14 @@ function renderBtcForecast(obj){
      <div class="small mt-2 leading-6">${obj.wave4h.detail}</div>`;
 
   el.btcLevelsBox.innerHTML =
-    `<div class="kv"><span class="small">1차 지지</span><span>${fmt(obj.s1,2)}</span></div>
-     <div class="kv"><span class="small">2차 지지</span><span>${fmt(obj.s2,2)}</span></div>
-     <div class="kv"><span class="small">1차 저항</span><span>${fmt(obj.r1,2)}</span></div>
-     <div class="kv"><span class="small">2차 저항</span><span>${fmt(obj.r2,2)}</span></div>`;
+    `<div class="kv"><span class="small">즉시 지지</span><span>${formatZone(obj.immediateSupport)}</span></div>
+     <div class="small" style="margin:-.15rem 0 .55rem .1rem;">${zoneSummary(obj.immediateSupport)}</div>
+     <div class="kv"><span class="small">구조 지지</span><span>${formatZone(obj.structuralSupport)}</span></div>
+     <div class="small" style="margin:-.15rem 0 .55rem .1rem;">${zoneSummary(obj.structuralSupport)}</div>
+     <div class="kv"><span class="small">즉시 저항</span><span>${formatZone(obj.immediateResistance)}</span></div>
+     <div class="small" style="margin:-.15rem 0 .55rem .1rem;">${zoneSummary(obj.immediateResistance)}</div>
+     <div class="kv"><span class="small">구조 저항</span><span>${formatZone(obj.structuralResistance)}</span></div>
+     <div class="small" style="margin:-.15rem 0 .1rem .1rem;">${zoneSummary(obj.structuralResistance)}</div>`;
 
   el.btcTriggerBox.innerHTML =
     `<div class="kv"><span class="small">4H ADX</span><span>${fix(obj.adx,1)}</span></div>
@@ -2135,7 +2398,6 @@ function renderBtcForecast(obj){
 
   el.btcForecastText.textContent = obj.scenario;
 }
-
 function renderTopPicks(rows){
   el.topPicks.innerHTML='';
 
@@ -2623,6 +2885,7 @@ window.onload=async()=>{
 </script>
 </body>
 </html>
+
 
 
 
