@@ -737,26 +737,96 @@
     <div class="manual-note mt-3">
       <div class="manual-title">핵심 3개</div>
       <ul class="manual-list list-disc">
-        <li>종합점수: 개별 시간대 신호 강도</li>
-        <li>방향일치도: 여러 시간대 정렬 정도</li>
-        <li>추천도: 최종 우선순위</li>
+        <li>추천도: 먼저 볼 순서를 정하는 점수입니다. 65 이상부터 검토하고, 65 미만은 방향 참고용으로 봅니다.</li>
+        <li>시나리오: 상승 / 하락 가능성을 설명하는 말이지, 바로 매수 / 매도하라는 뜻이 아닙니다.</li>
+        <li>주의사항: 거래량 부족, 상위 시간대 비정렬 같은 보수화 신호입니다.</li>
       </ul>
     </div>
   </section>
 
   <section class="panel mb-4">
-    <h2 class="text-xl mb-2">2. 기본 사용 순서</h2>
+    <h2 class="text-xl mb-2">2. 추천도 읽는 법</h2>
+    <div class="manual-grid">
+      <div class="manual-note">
+        <div class="manual-title">80 이상</div>
+        <p class="text-sm leading-7">강한 후보입니다. 먼저 차트를 열어볼 만하지만, 추격 진입보다 손절가와 눌림 구간을 먼저 확인합니다.</p>
+      </div>
+      <div class="manual-note">
+        <div class="manual-title">65 ~ 79</div>
+        <p class="text-sm leading-7">검토 가능 구간입니다. 일반적으로 가장 많이 참고할 점수대이며, 손절가와 주의사항 확인 후 선별 진입합니다.</p>
+      </div>
+      <div class="manual-note">
+        <div class="manual-title">50 ~ 64</div>
+        <p class="text-sm leading-7">관찰 구간입니다. 방향은 있을 수 있지만 확신이 약해 초심자는 성급한 진입을 피하는 편이 좋습니다.</p>
+      </div>
+      <div class="manual-note">
+        <div class="manual-title">50 미만</div>
+        <p class="text-sm leading-7">관망 우선 구간입니다. 왜 약한지 참고하는 용도로 보고, 실제 진입 후보에서는 뒤로 미룹니다.</p>
+      </div>
+    </div>
+    <div class="manual-note mt-3">
+      <div class="manual-title">추천도 사용 원칙</div>
+      <p class="text-sm leading-7">추천도는 우선순위 점수입니다. 추천도가 높아도 손절가가 멀거나 주의사항이 많으면 보수적으로 접근해야 합니다. 먼저 추천도를 보고, 그 다음 시나리오와 손절가를 확인하는 순서가 안전합니다.</p>
+    </div>
+  </section>
+
+  <section class="panel mb-4">
+    <h2 class="text-xl mb-2">3. 시장 분위기 읽는 법</h2>
+    <div class="manual-grid">
+      <div class="manual-note">
+        <div class="manual-title">시장 분위기</div>
+        <p class="text-sm leading-7">한 방향 흐름이 강한지, 박스권인지, 전환 탐색 구간인지를 보여줍니다. 방향성이 약한 구간일수록 추천도가 높아도 진입 빈도를 줄이는 편이 좋습니다.</p>
+      </div>
+      <div class="manual-note">
+        <div class="manual-title">BTC 1D ATR%</div>
+        <p class="text-sm leading-7">비트코인이 하루 기준으로 얼마나 크게 흔들리는지 보여줍니다. 높을수록 변동성이 크므로 손절 폭과 포지션 크기를 더 보수적으로 잡아야 합니다. 6% 이상이면 특히 주의합니다.</p>
+      </div>
+      <div class="manual-note">
+        <div class="manual-title">BTC 4H ADX</div>
+        <p class="text-sm leading-7">추세 힘의 강도를 뜻합니다. 보통 20 아래면 힘이 약하고, 25 이상이면 추세 추종이 쉬워지며, 35 이상이면 강한 추세 구간으로 봅니다.</p>
+      </div>
+      <div class="manual-note">
+        <div class="manual-title">BTC 4H Chop</div>
+        <p class="text-sm leading-7">시장이 추세인지 횡보인지 가늠하는 값입니다. 높을수록 박스권 성격이 강하고, 낮을수록 한 방향으로 움직일 가능성이 큽니다. 58 이상이면 횡보 성격, 52 아래면 추세 성격으로 보면 됩니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel mb-4">
+    <h2 class="text-xl mb-2">4. BTC 브리핑 읽는 법</h2>
+    <div class="manual-grid">
+      <div class="manual-note">
+        <div class="manual-title">핵심 레벨</div>
+        <p class="text-sm leading-7">1차 / 2차 지지와 저항은 가격이 멈추거나 반응할 가능성이 큰 구간입니다. 추천도가 높아도 저항 바로 아래에서는 추격 진입을 줄이고, 지지 이탈 시에는 손절을 먼저 생각합니다.</p>
+      </div>
+      <div class="manual-note">
+        <div class="manual-title">브레이크 / 조정 체크</div>
+        <p class="text-sm leading-7">4H ADX, 4H MACD Hist, Squeeze, EMA20/50/200을 함께 보며 지금이 돌파 구간인지, 조정 구간인지 판단합니다. 한 항목만 보지 말고 네 가지를 같이 확인해야 합니다.</p>
+      </div>
+      <div class="manual-note">
+        <div class="manual-title">브레이크 쪽으로 보는 경우</div>
+        <p class="text-sm leading-7">ADX가 올라가고, MACD Hist가 플러스 쪽으로 강해지며, Squeeze가 Fire로 전개되고, EMA 배열이 정배열이면 돌파 지속 가능성을 더 높게 봅니다.</p>
+      </div>
+      <div class="manual-note">
+        <div class="manual-title">조정 쪽으로 보는 경우</div>
+        <p class="text-sm leading-7">ADX가 약해지거나, MACD Hist가 줄어들고, 가격이 EMA20 또는 EMA50 근처로 되돌아오면 조정 가능성을 먼저 생각합니다. 이때는 추격보다 눌림 확인이 유리합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel mb-4">
+    <h2 class="text-xl mb-2">5. 기본 사용 순서</h2>
     <ol class="manual-list list-decimal">
       <li>계좌 잔고, 거래당 위험, ATR 손절 배수를 설정합니다.</li>
       <li>즉시 분석 실행을 누릅니다.</li>
-      <li>BTC 기술 분석 브리핑에서 큰 흐름을 먼저 확인합니다.</li>
-      <li>추천 코인 3개에서 매수/매도 관점을 보고 차트를 엽니다.</li>
+      <li>시장 분위기와 BTC 기술 분석 브리핑에서 큰 흐름을 먼저 확인합니다.</li>
+      <li>추천도 65 이상 후보부터 차트를 열고, 시나리오는 참고 설명으로 읽습니다.</li>
       <li>손절가와 주의사항을 확인한 뒤 진입 여부를 판단합니다.</li>
     </ol>
   </section>
 
   <section class="panel mb-4">
-    <h2 class="text-xl mb-2">3. 주의사항 해석</h2>
+    <h2 class="text-xl mb-2">6. 주의사항 해석</h2>
     <div class="manual-grid">
       <div class="manual-note">
         <div class="manual-title">거래량이 적음</div>
@@ -778,7 +848,7 @@
   </section>
 
   <section class="panel mb-4">
-    <h2 class="text-xl mb-2">4. 안전 원칙</h2>
+    <h2 class="text-xl mb-2">7. 안전 원칙</h2>
     <ul class="manual-list list-disc">
       <li>추천도만 보고 바로 진입하지 말고 손절가를 먼저 확인합니다.</li>
       <li>권장 레버리지는 상한선으로 보고, 실제 사용은 더 낮게 시작합니다.</li>
@@ -2538,6 +2608,7 @@ window.onload=async()=>{
 </script>
 </body>
 </html>
+
 
 
 
